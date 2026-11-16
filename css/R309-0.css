@@ -1,0 +1,171 @@
+input {
+	font-size:1em;
+}
+
+.alphabet {
+	display:flex;
+}
+.alphabet,.rm {
+	font-family: monospace;
+}
+.alphabet>div {
+	flex-grow:1;
+	flex-basis:0;
+}
+
+.shifted {
+	width:300%;
+	--key:0;
+	transform:translate(calc(-100% * var(--key) / 26 / 3 - 100% / 3),0);
+	transition-duration:1s;
+}
+#codedmessage, #uppermessage, #message, #key, #invkey, #recu {
+	font-family: monospace;
+}
+.formulaire {
+	 display:grid;
+	grid-template-columns: 50% 50%;
+	grid-gap:0.5em;
+	justify-content: center;
+}
+.formulaire label {
+	text-align:right;
+}
+
+.twocolumns {
+	display:grid;
+    grid-template-columns: calc(50% - 0.5em) calc(50% - 0.5em);
+    grid-gap:0.5em;
+	justify-content: center;
+
+}
+.gridres {
+	display:grid;
+	grid-template-columns:repeat(3,2em max-content);
+	font-size:var(--small);
+	justify-content:center;
+	margin-top:2em;
+}
+.gridres span {
+	border:1px solid;
+}
+.gridres span:nth-child(2n+1){
+	--backgroundcolor:var(--maincolor);
+	--fontcolor:var(--secondarycolor);
+	background-color:var(--backgroundcolor);
+	color:var(--fontcolor);
+	border-color:var(--maincolor);
+}
+.gridres span:nth-child(2n){
+	padding-left:1em;	
+	padding-right:1em;	
+}
+.frequences {
+ 	display:flex;align-items:flex-end;height:calc(var(--main-height) - 7em );width:75%;margin:auto;
+	--scale:5;
+}
+.frequences>div{
+	--frequence:0.1;
+	width:calc(100% / 26);
+	height:calc(var(--frequence) * 100% * var(--scale));
+	background-color:var(--maincolor);
+}
+#histoRef>div, #histoSW>div, #histoRef2>div, #histoSW2>div 
+{transition:height 4s;}
+#histoRef.delta>div,#histoRef2.delta>div{height:calc((var(--diff) * 100% )* var(--scale) - 2 * var(--wb));}
+#histoSW.delta>div,#histoSW2.delta>div {height:calc((var(--diff) * 100% )* var(--scale) );}
+#histoSW,#histoSW2
+{position:absolute;left:50%;transform:translateX(-50%);}
+#histoSW>div,#histoSW2>div{background-color:var(--auxiliarycolor);z-index:1;}
+#histoRef>div,#histoRef2>div{border-color:var(--maincolor);border:solid var(--wb);background-color:transparent;z-index:2; --wb:5px;
+	height:calc((var(--frequence) * 100% )* var(--scale) - 2 * var(--wb));
+}
+#histoRef>div>span,#histoRef2>div>span
+{
+	transform:translate(0,calc(-1em - 2 * var(--wb)));
+	background-color:transparent;}
+#histoSW.hideletters>div>span.tohide,#histoSW2.hideletters>div>span.tohide { opacity:0;
+}
+.frequences>div>span{
+	transform:translate(0,-1em);
+	display:block;
+	font-size:var(--small);
+	text-align:center;
+}
+
+.starwars {
+	--backgroundcolor:black;
+	--fontcolor:yellow;
+	background-color:var(--backgroundcolor);
+	color:var(--fontcolor);
+	height:100%;
+}
+.starwars>div.perspective {
+	transform-origin: 50% 100%;
+	transform: perspective(50vh) rotateX(25deg);
+	height:100%;
+}
+.starwars>div.perspective>div {
+	position:absolute;
+	top:100%;
+	width:100%;
+}
+.starwars>div.perspective>div.defile {
+	top:-100%;
+}
+.starwars>div.perspective>div>p:first-Child {
+	margin-top:0;
+}
+.starwars>div.perspective>div>p {
+	margin:auto;
+}
+
+#prologueCode {
+	padding-left:4em;padding-right:4em;
+	overflow-wrap:anywhere;
+}
+#keyPrologue {
+	width:2.5em;
+	text-align:center;
+}
+.optimal {
+	background-color:var(--auxiliarycolor);
+}
+#AliceEtBob {
+	display:flex;
+	align-items:center;
+	justify-content: center;
+}
+#AliceEtBob>img {
+	display:block;
+	max-width:50%;
+	max-height:100%;
+}
+#enveloppe {
+width:10%; position:absolute; top:40%; left:25%; transform:translate(-50%,-50%);
+}
+#enveloppe.send {
+	left:75%;
+}
+.mylist>li {
+	text-align:left;
+}
+.withlabel{
+	display:grid;
+	grid-template-columns: max-content auto;
+	grid-gap:0.5em;
+	justify-content: center;
+}
+.withlabel label {
+	text-align:right;
+}
+.withlabel * {
+	text-align:left;
+}
+.withlabel.nogap {
+	grid-gap:0;
+}
+
+p {
+	max-width:30em;
+}

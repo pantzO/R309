@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/pantzO/transitionjs@2.1.0/transition.css">
+	<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/pantzO/transitionjs@2.1.0/poll.css">
+	<link rel='stylesheet' type='text/css' href='css/Presentation.css'>
+	<meta charset="UTF-8">
+	<script type="text/x-mathjax-config">
+                        MathJax.Hub.Config({
+                                tex2jax: {
+                                        inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+                                        processEscapes: true
+                                },
+                                TeX: {
+                                        Macros: {
+                                                Z: "\\mathbb{Z}",
+                                                N: "\\mathbb{N}",
+                                                Img: "\\operatorname{Im}",
+                                                Card: "\\operatorname{Card}"
+                                        }
+                                }
+                        });
+	</script>
+	<script type="text/javascript" src="../../MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"> </script>
+	<title>Cryptographie 5</title>
+	<!--
+		Sondage (poll.js) : ouvrir le deck avec ?key=<clé présentateur> pour piloter le vote ;
+		ajouter &reset=1 pour effacer les votes d'une répétition. Sans clé, le deck affiche seulement les résultats.
+	-->
+	<style>
+		/* Regles locales, prefixees cm5- (memes conventions que cm1- a cm4-). */
+		body #slides>section table.cm5-plan { font-size: 3vmin; }
+		#slides { background-color: transparent; }
+		.cm5-plan { border-collapse: collapse; margin: 0.5em auto; }
+		.cm5-plan td, .cm5-plan th { border: 1px solid currentColor; padding: 0.15em 0.6em; text-align: center; }
+		.cm5-plan th { font-weight: bold; }
+		.cm5-plan .cm5-now { font-weight: bold; text-decoration: underline; }
+
+		/* Classes d'effet (variables de Presentation.css), comme au CM4. */
+		.auxicolor { --fontcolor: var(--auxiliarycolor); }
+		.auxicolor.invert { --fontcolor: var(--secondarycolor); --backgroundcolor: var(--auxiliarycolor); }
+		.hiddenContent { border-color: inherit; color: var(--backgroundcolor); }
+
+		.cm5-note { font-size: 0.6em; margin-top: 1.5em; }
+
+		/* Effet avalanche : deux hachés en binaire, bits differents surlignes */
+		.cm5-two { display: grid; grid-template-columns: max-content max-content; justify-content: center; grid-gap: 0 2em; }
+		.cm5-two code { font-size: min(0.8em, 1.9vw); }
+		.cm5-bits { font-family: monospace; font-size: min(0.65em, 1.55vw); line-height: 1.25; }
+		.cm5-showdiff .cm5-diff { background-color: var(--auxiliarycolor); color: var(--secondarycolor); }
+
+		/* Pre-traitement (meme tableau que l'an dernier) */
+		.cm5-pad { border-collapse: collapse; margin: 0.4em auto; }
+		.cm5-pad td { border: 0.05em solid currentColor; padding: 0.2em 0.8em; text-align: center; }
+
+		/* Chaine de blocs */
+		.cm5-chaine { display: grid; grid-template-columns: repeat(5, max-content); justify-content: center; align-items: stretch; grid-gap: 0 0.4em; font-size: min(0.65em, 1.6vw); white-space: nowrap; }
+		.cm5-fleche { font-size: 2em; align-self: center; }
+		.cm5-bloc { border: 0.1em solid currentColor; border-radius: 0.4em; padding: 0.3em 0.6em; }
+		.cm5-bloc > div { margin: 0.15em 0; padding: 0 0.2em; }
+		.cm5-bloc .cm5-titre { font-weight: bold; text-align: center; }
+		.cm5-bloc code { font-size: 1em; }
+
+		/* Demo de minage */
+		.cm5-mine { font-family: monospace; font-size: 0.8em; border: 0.1em solid currentColor; border-radius: 0.4em; padding: 0.4em 0.8em; margin: 0.4em auto; width: max-content; }
+		.cm5-res { border-collapse: collapse; margin: 0.6em auto; }
+		.cm5-res td, .cm5-res th { border: 1px solid currentColor; padding: 0.15em 0.8em; text-align: center; }
+
+		/* Merkle-Damgard */
+		.cm5-md { display: flex; align-items: center; justify-content: center; gap: 0.3em; font-size: 1em; }
+		.cm5-md .cm5-f { border: 0.1em solid currentColor; border-radius: 0.3em; padding: 0.2em 0.6em; text-align: center; }
+		.cm5-md .cm5-m { display: block; font-size: 0.8em; }
+
+		/* Sondage */
+		.cm5-url { text-align: center; }
+		.cm5-url::before { content: attr(data-poll-url); }
+		.cm5-sondage { display: grid; grid-template-columns: max-content 1fr; grid-gap: 0 2em; align-items: center; }
+		.cm5-sondage-qr img.poll-qr { width: 40vmin; height: 40vmin; display: block; }
+		.cm5-sondage-seul { grid-template-columns: 1fr; max-width: 30em; margin: 0 auto; }
+		.poll { margin: 0; }
+		.poll ol { list-style: none; padding: 0; margin: 0.6em 0 0 0; }
+		.poll ol li { border: 0.08em solid currentColor; border-radius: 0.6em; padding: 0.3em 2.5em 0.3em 0.8em; margin: 0.4em 0; overflow: hidden; }
+	</style>
+	<script>
+	/* SHA-256 synchrone (FIPS 180-4) pour les demos ; entree : chaine (UTF-8), sortie : hexadecimal.
+	   Verifie contre hashlib / node:crypto. Meme format de bloc que hash_bloc du TP. */
+	const cm5Sha256 = (function () {
+		const K = new Uint32Array([
+			0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+			0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+			0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+			0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+			0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+			0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+			0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+			0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+		const W = new Uint32Array(64);
+		const enc = new TextEncoder();
+		const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+		return function (str) {
+			const msg = enc.encode(str);
+			const L = msg.length, nb = ((L + 9 + 63) >> 6) << 6;
+			const buf = new Uint8Array(nb);
+			buf.set(msg); buf[L] = 0x80;
+			const dv = new DataView(buf.buffer);
+			dv.setUint32(nb - 8, Math.floor(L / 0x20000000)); dv.setUint32(nb - 4, (L * 8) >>> 0);
+			let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a,
+			    h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
+			for (let off = 0; off < nb; off += 64) {
+				for (let t = 0; t < 16; t++) W[t] = dv.getUint32(off + 4 * t);
+				for (let t = 16; t < 64; t++) {
+					const a = W[t - 15], b = W[t - 2];
+					W[t] = (W[t - 16] + (rotr(a, 7) ^ rotr(a, 18) ^ (a >>> 3)) + W[t - 7]
+					        + (rotr(b, 17) ^ rotr(b, 19) ^ (b >>> 10))) | 0;
+				}
+				let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+				for (let t = 0; t < 64; t++) {
+					const t1 = (h + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + K[t] + W[t]) | 0;
+					const t2 = ((rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+					h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+				}
+				h0 = (h0 + a) | 0; h1 = (h1 + b) | 0; h2 = (h2 + c) | 0; h3 = (h3 + d) | 0;
+				h4 = (h4 + e) | 0; h5 = (h5 + f) | 0; h6 = (h6 + g) | 0; h7 = (h7 + h) | 0;
+			}
+			return [h0, h1, h2, h3, h4, h5, h6, h7].map((x) => (x >>> 0).toString(16).padStart(8, '0')).join('');
+		};
+	})();
+	</script>
+</head>
+	<body class="UCA">
+	<div id="slides">
+
+	<!-- ============================================================ -->
+	<!--  1. Titre                                                     -->
+	<!-- ============================================================ -->
+		<section>
+		<hgroup class="boxed">
+				<h1>Cryptographie et sécurité</h1>
+				<h2>CM5&nbsp;: hachage et blockchain</h2>
+				<h2>O. Pantz</h2>
+	 	</hgroup>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  2. Plan du cours (même tableau que CM1 à CM4)                -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Plan du cours</h2>
+			<main>
+				<table class="cm5-plan">
+					<tr><th></th><th>Semaine</th><th>CM</th><th>TD / TP</th></tr>
+					<tr><td>1</td><td>7 sept.</td><td>Chiffrement César et Vigenère</td><td>César</td></tr>
+					<tr><td>2</td><td>14 sept.</td><td></td><td>Vigenère</td></tr>
+					<tr><td>3</td><td>21 sept.</td><td>Chiffrement par substitution</td><td>Permutations</td></tr>
+					<tr><td>4</td><td>28 sept.</td><td></td><td>Substitution I</td></tr>
+					<tr><td>5</td><td>5 oct.</td><td>Chiffrement asymétrique et RSA</td><td>Substitution II</td></tr>
+					<tr><td>6</td><td>12 oct.</td><td></td><td><b>Évaluation intermédiaire</b> + TD RSA</td></tr>
+					<tr><td>7</td><td>19 oct.</td><td>Codes correcteurs</td><td>RSA I : outils arithmétiques</td></tr>
+					<tr><td>8</td><td>3 nov.</td><td></td><td>RSA II : clés, chiffrement, signature</td></tr>
+					<tr><td>9</td><td>10 nov.</td><td></td><td>Code Hamming</td></tr>
+					<tr class="cm5-now"><td>10</td><td>16 nov.</td><td>Hachage, blockchain</td><td>Hachage : collisions, mini-blockchain</td></tr>
+				</table>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  3. Plan de la présentation                                   -->
+	<!--     Les liens #N pointent vers la N-ième diapositive.         -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Hachage et blockchain</h2>
+			<main>
+				<ul>
+					<li><a href="#4">Fonctions de hachage</a>
+						<ul>
+							<li>Principe, effet avalanche</li>
+							<li>Propriétés attendues</li>
+						</ul>
+					</li>
+					<li><a href="#8">Attaquer une fonction de hachage</a>
+						<ul>
+							<li>Force brute</li>
+							<li>Paradoxe des anniversaires</li>
+						</ul>
+					</li>
+					<li><a href="#13">Applications</a>
+						<ul>
+							<li>Intégrité, mots de passe, signature</li>
+						</ul>
+					</li>
+					<li><a href="#18">Blockchain</a>
+						<ul>
+							<li>Le registre de la coloc</li>
+							<li>Chaînage et preuve de travail</li>
+						</ul>
+					</li>
+					<li><a href="#29">Sous le capot&nbsp;: SHA-256</a></li>
+				</ul>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  4. Fonctions de hachage                                      -->
+	<!-- ============================================================ -->
+		<section>
+			<h1>Fonctions de hachage</h1>
+		</section>
+
+		<section>
+			<h2>Le principe</h2>
+			<main>
+				<p>Une fonction de hachage associe à un message<br/>
+				   de taille quelconque une <em>empreinte</em> de taille fixe&nbsp;:</p>
+				$$
+				H:\{0,1\}^*\rightarrow\{0,1\}^n
+				$$
+				<div class="ulcontainer readable-width">
+				<ul>
+					<li>$H(m)$ est facile à calculer&nbsp;;</li>
+					<li>connaissant $H(m)$, retrouver $m$ est difficile.</li>
+				</ul>
+				</div>
+				<p class="hidden" data-fragments="{hidden}">Exemple&nbsp;: SHA-256, $n=256$ bits<br/>
+				   (64 caractères hexadécimaux).</p>
+			</main>
+		</section>
+
+		<section>
+			<h2>Effet avalanche</h2>
+			<main id="avalanche">
+				<div class="cm5-two">
+					<div>
+						<p>SHA-256 de<br/><code>"C'est bientôt la pause ?"</code></p>
+						<div class="cm5-bits" id="bitsA"></div>
+					</div>
+					<div class="hidden" data-fragments="{hidden}">
+						<p>SHA-256 de<br/><code>"C'est bientôt la pause !"</code></p>
+						<div class="cm5-bits" id="bitsB"></div>
+					</div>
+				</div>
+				<p id="nbdiff-p" class="hidden align-center">Un caractère modifié&nbsp;: <b id="nbdiff"></b> bits sur 256 ont changé.</p>
+				<div data-fragments="[avalanche]{cm5-showdiff} +0[nbdiff-p]{hidden}"></div>
+			</main>
+		</section>
+
+		<section>
+			<h2>Propriétés attendues</h2>
+			<main id="proprietes-main">
+				<h3>Résistance à la préimage</h3>
+				<p>Étant donné $y$, trouver $m$ tel que $H(m)=y$.</p>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Résistance à la seconde préimage</h3>
+					<p>Étant donné $m$, trouver $m'\neq m$<br/>
+					   tel que $H(m')=H(m)$.</p>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Résistance aux collisions</h3>
+					<p>Trouver $m\neq m'$ tels que $H(m)=H(m')$.</p>
+				</div>
+			</main>
+			<div class="boxed center middle hidden align-center full" data-fragments="{hidden} +0[proprietes-main]{blur}">
+				Une infinité de messages, $2^{256}$ empreintes&nbsp;:<br/>
+				$H$ n'est pas injective, <b>les collisions existent</b>.<br/>
+				<br/>
+				On ne sait simplement pas en trouver.
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  8. Attaques                                                  -->
+	<!-- ============================================================ -->
+		<section>
+			<h1>Attaquer une fonction de hachage</h1>
+		</section>
+
+		<section>
+			<h2>Force brute</h2>
+			<main>
+				<p>On cherche $m$ tel que $H(m)=y$.<br/>
+				   On essaie $m_1, m_2, \dots$ au hasard.</p>
+				<div class="ulcontainer readable-width">
+				<ul>
+					<li>Chaque essai réussit avec probabilité $2^{-n}$.</li>
+					<li>Nombre moyen d'essais (loi géométrique)&nbsp;: $2^n$.</li>
+				</ul>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<p>Pour SHA-256&nbsp;: $2^{256}\approx 10^{77}$ essais.</p>
+				</div>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  Sondage : anniversaires                                      -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>À vous&nbsp;!</h2>
+			<!-- poll.js remplit data-poll-url avec l'adresse de vote ; elle est affichée en sous-titre. -->
+			<h3 class="cm5-url" data-poll-url=""></h3>
+			<main>
+				<div class="cm5-sondage">
+					<div class="cm5-sondage-qr">
+						<img class="poll-qr" alt="QR code du sondage"/>
+					</div>
+					<div class="poll" data-poll="anniversaires"
+					     data-question="Combien faut-il de personnes dans une salle pour avoir plus d'une chance sur deux que deux d'entre elles aient le même anniversaire ?"
+					     data-fragments="{open} {open} +0{results} {answer}">
+						<p>Combien faut-il de personnes<br/>
+						   dans une salle pour avoir plus<br/>
+						   d'une chance sur deux que deux<br/>
+						   d'entre elles aient le même anniversaire&nbsp;?</p>
+						<ol>
+							<li class="correct">23</li>
+							<li>60</li>
+							<li>183</li>
+							<li>366</li>
+						</ol>
+					</div>
+				</div>
+			</main>
+		</section>
+
+		<section>
+			<h2>Paradoxe des anniversaires</h2>
+			<main>
+				<p>$k$ personnes, $N$ jours équiprobables.</p>
+				$$
+				\begin{aligned}
+				P(\text{pas de collision})&=\prod_{i=1}^{k-1}\left(1-\frac{i}{N}\right)\\
+				&\cssId{approx}{\class{hidden}{\approx e^{-\frac{k(k-1)}{2N}}}}
+				\end{aligned}
+				$$
+				<div data-fragments="[approx]{hidden}"></div>
+				<div class="hidden" data-fragments="{hidden}">
+					<p>Probabilité $1/2$ pour $k\approx\sqrt{2\ln 2\,N}\approx 1{,}18\sqrt{N}$.</p>
+					<p>$N=365$&nbsp;: $k=23$.</p>
+				</div>
+			</main>
+		</section>
+
+		<section>
+			<h2>Collisions</h2>
+			<main id="collisions-main">
+				<p>Empreintes de $n$ bits&nbsp;: $N=2^n$.</p>
+				<div class="ulcontainer readable-width">
+				<ul>
+					<li>Préimage&nbsp;: environ $2^n$ essais.</li>
+					<li>Collision&nbsp;: environ $\sqrt{N}=2^{n/2}$ essais.</li>
+				</ul>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<p>SHA-256 offre donc <b>128</b> bits de sécurité<br/>
+					   contre les collisions, et non 256.</p>
+				</div>
+			</main>
+			<div class="boxed center middle hidden align-center full" data-fragments="{hidden} +0[collisions-main]{blur}">
+				<h3 class="align-center">Au prochain TP</h3>
+				SHA-256 tronqué à 40 bits, en Python&nbsp;:<br/>
+				<br/>
+				collision&nbsp;: environ <b>1 seconde</b>&nbsp;;<br/>
+				préimage&nbsp;: environ <b>13 jours</b>.
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  13. Applications                                             -->
+	<!-- ============================================================ -->
+		<section>
+			<h1>Applications</h1>
+		</section>
+
+		<section>
+			<h2>Vérifier l'intégrité</h2>
+			<main>
+				<p>Le site publie l'empreinte du fichier&nbsp;:</p>
+<pre>$ sha256sum fichier.iso
+5f0f96d7…a1c3  fichier.iso</pre>
+				<p>Après téléchargement, on recalcule et on compare.</p>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Ailleurs</h3>
+					<p>Git identifie chaque version par un haché&nbsp;;<br/>
+					   les antivirus reconnaissent les fichiers connus.</p>
+				</div>
+			</main>
+		</section>
+
+		<section>
+			<h2>Stockage des mots de passe</h2>
+			<main id="mdp-main">
+				<p><em>Ne jamais stocker un mot de passe en clair&nbsp;!</em></p>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>On stocke son haché</h3>
+<pre>bdd[login] = SHA256(mdp)</pre>
+					<p>Même mot de passe, même haché&nbsp;: tables précalculées&nbsp;!</p>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>On ajoute un sel aléatoire</h3>
+<pre>sel = chaine_aleatoire(16)
+bdd[login] = (sel, SHA256(sel + mdp))</pre>
+				</div>
+			</main>
+			<div class="boxed center middle hidden align-center full" data-fragments="{hidden} +0[mdp-main]{blur}">
+				Le sel est stocké en clair&nbsp;: un mot de passe faible<br/>
+				reste vulnérable au dictionnaire, compte par compte.<br/>
+				<br/>
+				D'où une fonction volontairement <b>lente</b>&nbsp;:<br/>
+				bcrypt, Argon2&hellip;
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  Sondage : sel                                                -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>À vous&nbsp;!</h2>
+			<h3 class="cm5-url" data-poll-url=""></h3>
+			<main>
+				<div class="cm5-sondage cm5-sondage-seul">
+					<div class="poll" data-poll="sel"
+					     data-question="À quoi sert le sel dans le stockage des mots de passe ?"
+					     data-fragments="{open} {open} +0{results} {answer}">
+						<p>À quoi sert le sel dans le stockage<br/>
+						   des mots de passe&nbsp;?</p>
+						<ol>
+							<li>À permettre à l'administrateur de retrouver le mot de passe</li>
+							<li class="correct">À empêcher d'attaquer tous les comptes avec une même table précalculée</li>
+							<li>À chiffrer le mot de passe avant de le stocker</li>
+							<li>À rien si le mot de passe est long</li>
+						</ol>
+					</div>
+				</div>
+			</main>
+		</section>
+
+		<section>
+			<h2>Signature</h2>
+			<h3>retour sur RSA</h3>
+			<main id="signature-main">
+				<p>Alice signe le haché du message&nbsp;:</p>
+				$$\sigma = H(m)^d \bmod n$$
+				<p>Bob vérifie&nbsp;:</p>
+				$$\sigma^e \bmod n \overset{?}{=} H(m)$$
+			</main>
+			<div class="boxed center middle hidden align-center full" data-fragments="{hidden} +0[signature-main]{blur}">
+				$H(m)$ a une taille fixe, plus petite que $n$.<br/>
+				<br/>
+				Si $H(m)=H(m')$, la signature de $m$<br/>
+				vaut aussi pour $m'$&nbsp;: d'où la résistance aux collisions.
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  18. Blockchain                                               -->
+	<!-- ============================================================ -->
+		<section>
+			<hgroup>
+				<h1>Blockchain</h1>
+				<p class="cm5-note">Bitcoin&nbsp;: premier bloc le 3 janvier 2009.<br/>
+				   Premier achat réel, le 22 mai 2010&nbsp;: deux pizzas pour 10&nbsp;000 BTC.</p>
+			</hgroup>
+		</section>
+
+		<section>
+			<h2>Le registre de la coloc</h2>
+			<main id="coloc-main">
+				<div class="ulcontainer readable-width">
+				<ul>
+					<li>Bob doit 10 euros à Alice</li>
+					<li>Yacine doit 5 euros à Bob</li>
+					<li>Alice doit 5 euros à Jean</li>
+					<li>&hellip;</li>
+				</ul>
+				</div>
+				<p>En fin de mois, on solde les comptes.</p>
+			</main>
+			<div class="boxed center middle hidden align-center full" data-fragments="{hidden} +0[coloc-main]{blur}">
+				Comment empêcher Bob d'ajouter la ligne<br/>
+				<em>«&nbsp;Alice doit 100 euros à Bob&nbsp;»</em>&nbsp;?
+			</div>
+		</section>
+
+		<section>
+			<h2>Signature</h2>
+			<main id="signe-main">
+				<p>Chaque ligne est signée par celui qui paie&nbsp;:</p>
+<pre>Bob doit 10 euros à Alice
+  signe(…, clé_Bob)
+Yacine doit 5 euros à Bob
+  signe(…, clé_Yacine)</pre>
+			</main>
+			<div class="boxed center middle hidden align-center full" data-fragments="{hidden} +0[signe-main]{blur}">
+				Comment empêcher Alice de recopier<br/>
+				la ligne signée par Bob&nbsp;?
+			</div>
+		</section>
+
+		<section>
+			<h2>Numérotation</h2>
+			<main>
+				<p>Le numéro de la ligne fait partie du message signé&nbsp;:</p>
+<pre>1. Bob doit 10 euros à Alice
+   signe("1. Bob doit…", clé_Bob)
+2. Yacine doit 5 euros à Bob
+   signe("2. Yacine doit…", clé_Yacine)</pre>
+				<p>Une copie de la ligne 1 n'est pas une ligne 3 valide.</p>
+			</main>
+		</section>
+
+		<section>
+			<h2>Et si Bob ne paie pas&nbsp;?</h2>
+			<main id="pot-main">
+				<p>Chacun dépose d'abord une somme au pot,<br/>
+				   inscrite au registre.</p>
+				<p>Une ligne qui dépasse le solde disponible<br/>
+				   n'est pas valide.</p>
+			</main>
+			<div class="boxed center middle hidden align-center full" data-fragments="{hidden} +0[pot-main]{blur}">
+				Plus besoin de solder les comptes&nbsp;:<br/>
+				le registre devient une monnaie.<br/>
+				Mais il faut garder tout l'historique.
+			</div>
+		</section>
+
+		<section>
+			<h2>Qui détient le registre&nbsp;?</h2>
+			<main>
+				<p>Un détenteur unique pourrait effacer<br/>
+				   ou remplacer une ligne.</p>
+				<div class="hidden" data-fragments="{hidden}">
+					<p>Chaque transaction est diffusée à tous&nbsp;:<br/>
+					   chacun garde sa copie du registre.</p>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Nouveau problème</h3>
+					<p>Comment tout le monde s'accorde-t-il<br/>
+					   sur <em>la même</em> version&nbsp;?</p>
+				</div>
+			</main>
+		</section>
+
+		<!-- Hachés reels (format de hash_bloc du TP, k = 16 bits) : les etudiants peuvent les recalculer. -->
+		<section>
+			<h2>Chaîner les blocs</h2>
+			<main id="chaine-main">
+				<p>Les transactions sont regroupées en blocs.<br/>
+				   Chaque bloc contient le haché du précédent.</p>
+				<div class="cm5-chaine">
+					<div class="cm5-bloc">
+						<div class="cm5-titre">Bloc 1</div>
+						<div>préc.&nbsp;: <code>00000000…</code></div>
+						<div>Alice dépose 50 euros</div>
+						<div id="tx1">Bob doit <span id="tx1v">10</span><span id="tx1w" class="removed">100</span> euros à Alice</div>
+						<div>nonce&nbsp;: 15418</div>
+						<div id="hb1">H&nbsp;= <code><span id="hb1v">00008228…</span><span id="hb1w" class="removed">b4a2691e…</span></code></div>
+					</div>
+					<div class="cm5-fleche">&rarr;</div>
+					<div class="cm5-bloc">
+						<div class="cm5-titre">Bloc 2</div>
+						<div id="pb2">préc.&nbsp;: <code>00008228…</code></div>
+						<div>Yacine doit 5 euros à Bob</div>
+						<div>Alice doit 5 euros à Jean</div>
+						<div>nonce&nbsp;: 78539</div>
+						<div>H&nbsp;= <code>0000a796…</code></div>
+					</div>
+					<div class="cm5-fleche">&rarr;</div>
+					<div class="cm5-bloc">
+						<div class="cm5-titre">Bloc 3</div>
+						<div>préc.&nbsp;: <code>0000a796…</code></div>
+						<div>Jean doit 20 euros à Yacine</div>
+						<div>nonce&nbsp;: 138388</div>
+						<div>H&nbsp;= <code>000085b0…</code></div>
+					</div>
+				</div>
+				<div data-fragments="
+					[hb1,pb2]{invert}
+					[hb1,pb2]{invert} +0[tx1]{auxicolor invert} +0[tx1v,tx1w]{removed}
+					[hb1]{auxicolor invert} +0[hb1v,hb1w]{removed}
+					[pb2]{auxicolor invert}
+				"></div>
+			</main>
+			<div class="boxed center middle hidden align-center full" data-fragments="{hidden} +0[chaine-main]{blur}">
+				Modifier le bloc 1 change son haché&nbsp;:<br/>
+				le lien avec le bloc 2 est rompu.<br/>
+				<br/>
+				Pourquoi tous les hachés commencent-ils par <code>0000</code>&nbsp;?
+			</div>
+		</section>
+
+		<section>
+			<h2>Preuve de travail</h2>
+			<main id="pow-main">
+				<p>Le mineur cherche un <em>nonce</em> tel que $H(\text{bloc})$<br/>
+				   commence par $k$ bits nuls.</p>
+				<div class="ulcontainer readable-width">
+				<ul>
+					<li>Chaque essai réussit avec probabilité $2^{-k}$.</li>
+					<li>Nombre moyen d'essais&nbsp;: $2^k$.</li>
+					<li>Vérifier&nbsp;: un seul calcul de $H$.</li>
+				</ul>
+				</div>
+				<p class="hidden" data-fragments="{hidden}"><span class="highlight">Bitcoin&nbsp;:</span> $k$ ajusté pour un bloc toutes les 10 min&nbsp;;<br/>
+				   récompense du mineur&nbsp;: 3,125 BTC (depuis avril 2024).</p>
+			</main>
+			<div class="boxed center middle hidden align-center full" data-fragments="{hidden} +0[pow-main]{blur}">
+				Modifier un bloc validé, c'est refaire la preuve<br/>
+				de ce bloc <b>et de tous les suivants</b>,<br/>
+				plus vite que tous les autres mineurs réunis.
+			</div>
+		</section>
+
+		<!-- Demo : minage en direct, meme format de bloc que le TP. -->
+		<section>
+			<h2>Minage en direct</h2>
+			<main>
+				<div class="cm5-mine">
+					précédent&nbsp;: 000085b0aa624ff8…<br/>
+					Bob doit 15 euros à Jean<br/>
+					nonce&nbsp;: <span id="mine-nonce">0</span><br/>
+					H&nbsp;= <span id="mine-hash"></span>
+				</div>
+				<table class="cm5-res">
+					<tr><th>$k$</th><th>Moyenne $2^k$</th><th>Essais</th><th>Temps</th></tr>
+					<tr><td>16</td><td>65&nbsp;536</td><td id="mine-n16"></td><td id="mine-t16"></td></tr>
+					<tr><td>20</td><td>1&nbsp;048&nbsp;576</td><td id="mine-n20"></td><td id="mine-t20"></td></tr>
+				</table>
+				<div id="mine-go16" data-fragments="{cm5-go}"></div>
+				<div id="mine-go20" data-fragments="{cm5-go}"></div>
+			</main>
+		</section>
+
+		<section>
+			<h2>Conflits</h2>
+			<main>
+				<p>Deux mineurs valident un bloc en même temps&nbsp;:<br/>
+				   la chaîne se divise.</p>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Règle</h3>
+					<p>On retient la chaîne qui a demandé<br/>
+					   le plus de travail (la plus longue).</p>
+					<p>Une transaction est considérée sûre<br/>
+					   après 6 blocs, soit environ une heure.</p>
+				</div>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  Sondage : fraudeur                                           -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>À vous&nbsp;!</h2>
+			<h3 class="cm5-url" data-poll-url=""></h3>
+			<main>
+				<div class="cm5-sondage cm5-sondage-seul">
+					<div class="poll" data-poll="fraudeur"
+					     data-question="Un fraudeur veut modifier une de ses propres transactions, inscrite dans le bloc 100. La chaîne compte 105 blocs. Que doit-il faire ?"
+					     data-fragments="{open} {open} +0{results} {answer}">
+						<p>Un fraudeur veut modifier une de ses<br/>
+						   propres transactions, dans le bloc 100.<br/>
+						   La chaîne compte 105 blocs.<br/>
+						   Que doit-il faire&nbsp;?</p>
+						<ol>
+							<li>Modifier la transaction, c'est tout</li>
+							<li>Refaire la preuve de travail du bloc 100</li>
+							<li class="correct">Refaire les preuves des blocs 100 à 105, plus vite que les autres mineurs</li>
+							<li>Casser la signature RSA de la transaction</li>
+						</ol>
+					</div>
+				</div>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  29. SHA-256                                                  -->
+	<!-- ============================================================ -->
+		<section>
+			<hgroup>
+				<h1>Sous le capot&nbsp;: SHA-256</h1>
+				<p>Référence&nbsp;: <a href="https://csrc.nist.gov/pubs/fips/180-4/upd1/final">FIPS 180-4</a></p>
+			</hgroup>
+		</section>
+
+		<section>
+			<h2>Pré-traitement</h2>
+			<main>
+				<p>On complète le message pour que sa taille<br/>
+				   soit un multiple de 512 bits&nbsp;:</p>
+				<table class="cm5-pad">
+					<tr><td>message $m$</td><td>$10\cdots 0$</td><td>taille de $m$ (64 bits)</td></tr>
+				</table>
+				<p class="align-center">&larr; $N \times 512$ bits &rarr;</p>
+				<p>On découpe en blocs $M_1,\dots,M_N$ de 512 bits.</p>
+			</main>
+		</section>
+
+		<section>
+			<h2>Construction de Merkle–Damgård</h2>
+			<main>
+				<div class="cm5-md">
+					<div>$H_0$</div><div>&rarr;</div>
+					<div class="cm5-f">$f$<span class="cm5-m">$M_1$</span></div><div>&rarr;</div>
+					<div class="cm5-f">$f$<span class="cm5-m">$M_2$</span></div><div>&rarr;&nbsp;$\cdots$&nbsp;&rarr;</div>
+					<div class="cm5-f">$f$<span class="cm5-m">$M_N$</span></div><div>&rarr;</div>
+					<div>$H(m)$</div>
+				</div>
+				$$H_i=f(H_{i-1},M_i)$$
+				<div class="hidden" data-fragments="{hidden}">
+					<div class="ulcontainer readable-width">
+					<ul>
+						<li>$H_0$&nbsp;: parties fractionnaires des racines carrées<br/>
+						    des 8 premiers nombres premiers&nbsp;;</li>
+						<li>$f$&nbsp;: 64 tours de rotations, décalages, XOR<br/>
+						    et additions modulo $2^{32}$.</li>
+					</ul>
+					</div>
+				</div>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  À retenir                                                    -->
+	<!-- ============================================================ -->
+		<section>
+			<h3>À retenir</h3>
+			<main>
+				<p>Une fonction de hachage est facile à calculer, difficile à inverser&nbsp;; avec $n$ bits, une collision coûte environ $2^{n/2}$ essais (paradoxe des anniversaires).</p>
+				<p>Mots de passe&nbsp;: on stocke un haché salé, calculé par une fonction lente.</p>
+				<p>Blockchain&nbsp;: chaque bloc contient le haché du précédent et une preuve de travail&nbsp;; modifier le passé oblige à refaire tout le travail.</p>
+				<p class="cm5-note">Pour aller plus loin (YouTube, 3Blue1Brown)&nbsp;: <a href="https://www.youtube.com/watch?v=bBC-nXj3Ng4">Bitcoin</a>, <a href="https://www.youtube.com/watch?v=S9JGmA5_unY">casser SHA-256&nbsp;?</a></p>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  Sondage : pizzas                                             -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>À vous&nbsp;!</h2>
+			<h3 class="cm5-url" data-poll-url=""></h3>
+			<main>
+				<div class="cm5-sondage cm5-sondage-seul">
+					<div class="poll" data-poll="pizzas"
+					     data-question="Pour finir : contre quoi ont été échangés les premiers bitcoins utilisés pour un achat réel ?"
+					     data-fragments="{open} {open} +0{results} {answer}">
+						<p>Pour finir&nbsp;:<br/>
+						   contre quoi ont été échangés<br/>
+						   les premiers bitcoins utilisés<br/>
+						   pour un achat réel&nbsp;?</p>
+						<ol>
+							<li>Un café</li>
+							<li class="correct">Deux pizzas</li>
+							<li>Un billet de train</li>
+							<li>Une carte graphique</li>
+						</ol>
+					</div>
+				</div>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  Fin : clôture du sondage, message et score sur les téléphones -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Merci&nbsp;!</h2>
+			<main>
+				<p>Une collision coûte $2^{n/2}$ essais,<br/>
+				   une préimage $2^n$.</p>
+				<p>En TP&nbsp;: collisions et mini-blockchain.</p>
+				<p class="poll-end hidden"
+				   data-message="Merci ! À retenir : une collision coûte environ 2^(n/2) essais (paradoxe des anniversaires), une préimage 2^n. En TP : collisions et mini-blockchain."
+				   data-fragments="{hidden open}"><b>Regardez votre téléphone&nbsp;: votre score vous attend.</b></p>
+			</main>
+		</section>
+
+	</div>
+<script>
+	/* Effet avalanche : les deux hachés en binaire, 8 lignes de 32 bits ; bits differents marques cm5-diff. */
+	(function () {
+		const toBits = (hex) => hex.split('').map((c) => parseInt(c, 16).toString(2).padStart(4, '0')).join('');
+		const a = toBits(cm5Sha256("C'est bientôt la pause ?"));
+		const b = toBits(cm5Sha256("C'est bientôt la pause !"));
+		let nb = 0, ha = '', hb = '';
+		for (let i = 0; i < 256; i++) {
+			const d = a[i] !== b[i];
+			if (d) nb++;
+			ha += '<span' + (d ? ' class="cm5-diff"' : '') + '>' + a[i] + '</span>';
+			hb += '<span' + (d ? ' class="cm5-diff"' : '') + '>' + b[i] + '</span>';
+			if (i % 32 === 31) { ha += '<br/>'; hb += '<br/>'; }
+		}
+		document.getElementById('bitsA').innerHTML = ha;
+		document.getElementById('bitsB').innerHTML = hb;
+		document.getElementById('nbdiff').textContent = nb;
+	})();
+
+	/* Minage en direct : demarre quand le fragment donne la classe cm5-go au declencheur.
+	   Format du bloc identique a hash_bloc du TP : precedent \n transactions \n nonce. */
+	(function () {
+		const prefixe = "000085b0aa624ff8af58f11ed9d7a4aa89398a5a3a49d3f542c51eef81f3f934\nBob doit 15 euros à Jean\n";
+		const elNonce = document.getElementById('mine-nonce');
+		const elHash = document.getElementById('mine-hash');
+		const show = (n, h) => { elNonce.textContent = n; elHash.textContent = h.slice(0, 24) + '…'; };
+		show(0, cm5Sha256(prefixe + 0));
+		const fait = {};
+		function miner(k) {
+			if (fait[k]) return;
+			fait[k] = true;
+			const zeros = '0'.repeat(k / 4), t0 = performance.now();
+			let n = 0;
+			(function lot() {
+				let h;
+				for (let i = 0; i < 5000; i++, n++) {
+					h = cm5Sha256(prefixe + n);
+					if (h.startsWith(zeros)) {
+						show(n, h);
+						document.getElementById('mine-n' + k).textContent = (n + 1).toLocaleString('fr-FR');
+						document.getElementById('mine-t' + k).textContent = ((performance.now() - t0) / 1000).toFixed(1).replace('.', ',') + ' s';
+						return;
+					}
+				}
+				show(n, h);
+				setTimeout(lot, 0);
+			})();
+		}
+		[16, 20].forEach((k) => {
+			const el = document.getElementById('mine-go' + k);
+			new MutationObserver(() => { if (el.classList.contains('cm5-go')) miner(k); })
+				.observe(el, { attributes: true, attributeFilter: ['class'] });
+		});
+	})();
+</script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/pantzO/transitionjs@2.1.0/transition.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/pantzO/transitionjs@2.1.0/poll.js"></script>
+<script>
+	function demarre(){
+		// Sans clé présentateur (?key=...), le deck se contente d'afficher les résultats.
+		if (TransitionJS.polls) {
+			TransitionJS.polls({
+				server: 'https://poll-transitionjs-poll.apps.math.cnrs.fr',
+				session: 'r309-cm5'
+			});
+		}
+		TransitionJS.init({
+			rules: [ { selector: '#slides > :not(:first-child)', fragments: '[slides]{--shift++} 2s' } ],
+		});
+	}
+	if (window.MathJax && MathJax.Hub) MathJax.Hub.Queue(demarre); else demarre();
+</script>
+</body>
+
+</html>

@@ -1,0 +1,6 @@
+.KO {
+	color:red;
+}
+.emFirst:first-letter {
+	color:var(--auxiliarycolor);
+}

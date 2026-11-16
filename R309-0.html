@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<link rel="stylesheet" type="text/css" href="../transitionjs/transition.css">
+	<link rel='stylesheet' type='text/css' href='css/R309.css'>
+	<link rel='stylesheet' type='text/css' href='css/R309-0.css'>
+	<meta charset="UTF-8">
+	<script type="text/x-mathjax-config">
+                        MathJax.Hub.Config({
+                                tex2jax: {
+                                        inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+                                        processEscapes: true
+                                }
+                        });
+	</script>
+	<script type="text/javascript" src="../../MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"> </script>
+	<title>Cryptographie 1</title>
+	<style>
+		/* Quelques regles locales pour les nouvelles diapositives, prefixees cm1- pour
+		   ne pas interferer avec R309.css. A deplacer dans R309-0.css si souhaite. */
+		.cm1-table { border-collapse: collapse; margin: 0.5em auto; font-size: 0.75em; }
+		.cm1-table td, .cm1-table th { border: 1px solid currentColor; padding: 0.15em 0.6em; text-align: center; }
+		.cm1-table th { font-weight: bold; }
+		.cm1-table .cm1-now { font-weight: bold; text-decoration: underline; }
+		.cm1-vig td { font-family: monospace; font-size: 1.3em; min-width: 1.4em; }
+		.cm1-eq { font-size: 1.2em; margin: 0.4em 0; }
+		.cm1-note { font-size: 0.8em; opacity: 0.85; margin-top: 0.6em; }
+		.cm1-ic span { font-family: monospace; font-size: 1.2em; }
+		.cm1-ic label { display: inline-block; min-width: 14em; }
+		.cm1-pic { font-weight: bold; }
+	</style>
+</head>
+	<body class="UCA">
+	<div id="slides">
+
+	<!-- ============================================================ -->
+	<!--  1. Titre                                                     -->
+	<!-- ============================================================ -->
+		<section>
+		<hgroup class="boxed invert">
+				<h1>	Cryptographie et sécurité</h1>
+				<h2>IUT Nice Sophia-Antipolis</h2>
+				<h2>O. Pantz</h2>
+	 	</hgroup>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  2. Plan du cours                                             -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Plan du cours</h2>
+			<div class="main">
+				<table class="cm1-table">
+					<tr><th></th><th>Semaine</th><th>CM</th><th>TD / TP</th></tr>
+					<tr class="cm1-now"><td>1</td><td>8 sept.</td><td>Chiffrement César et Vigenère</td><td>César</td></tr>
+					<tr><td>2</td><td>15 sept.</td><td></td><td>Vigenère</td></tr>
+					<tr><td>3</td><td>22 sept.</td><td>Chiffrement par substitution</td><td>Permutations</td></tr>
+					<tr><td>4</td><td>29 sept.</td><td></td><td>Substitution I</td></tr>
+					<tr><td>5</td><td>6 oct.</td><td>Chiffrement asymétrique et RSA</td><td>Substitution II</td></tr>
+					<tr><td>6</td><td>13 oct.</td><td></td><td><b>Évaluation intermédiaire</b> + RSA I : outils arithmétiques</td></tr>
+					<tr><td>7</td><td>20 oct.</td><td>Codes correcteurs</td><td>RSA II : clés, chiffrement, signature</td></tr>
+					<tr><td>8</td><td>3 nov.</td><td></td><td>Code de Hamming</td></tr>
+					<tr><td>9</td><td>10 nov.</td><td>Hachage, blockchain</td><td>Hachage : collisions, mots de passe</td></tr>
+					<tr><td>10</td><td>17 nov.</td><td></td><td>Masque jetable, AES</td></tr>
+				</table>
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  3. Principe et objectif                                      -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Principe et Objectif</h2>
+			<div class="main">
+				<div class="center middle">
+				<h3>Comprendre</h3>
+					Concepts présentés en CM, travaillés en TD
+				<h3>Appliquer</h3>
+				Mise en pratique en TP, rendu à chaque séance (bonus)
+				<h3>Évaluer</h3>
+				Deux épreuves <b>sur table</b> : semaine 6 (45 min) et fin de semestre
+				</div>
+			</div>
+			<div class="boxed center middle invert hidden" data-fragments="{hidden}">
+				Les TP sont là pour que vous compreniez, pas pour vous noter.<br/>
+				Une IA fera le TP mieux que vous. Elle ne passera pas l'écrit à votre place.
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  4. Section César                                             -->
+	<!-- ============================================================ -->
+		<section>
+			<h1>Chiffrement symétrique<br/>César</h1>
+		</section>
+		<section>
+			<div id="AliceEtBob">
+				<img src="img/alice.png" style="transform:scaleX(-1);"/>
+				<img src="img/bobeponge.png"/>
+			</div>
+			<img src="SVG/enveloppe.svg" 
+			     id="enveloppe" class="hidden" data-fragments="{hidden} {send} 3s" />
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  5. Calcul modulaire (NOUVEAU)                                -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Calcul modulaire</h2>
+			<div class="main">
+				<div class="cm1-eq">
+				$$ a \equiv b \ [n] \quad\Longleftrightarrow\quad n \text{ divise } a - b $$
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<div class="cm1-eq">
+					$27 \equiv 1 \ [26]$ &emsp;&emsp;
+					$-3 \equiv 23 \ [26]$ &emsp;&emsp;
+					$14 \equiv 2 \ [12]$
+					</div>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Compatible avec les opérations</h3>
+					<div class="cm1-eq">
+					Si $a \equiv a'$ et $b \equiv b'$, alors
+					$a + b \equiv a' + b'$ &nbsp; et &nbsp; $a \times b \equiv a' \times b'$
+					</div>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<div class="cm1-eq">
+					$10 \equiv 1 \ [9]$ donc $10^k \equiv 1 \ [9]$ donc
+					$\overline{abc} = 100a + 10b + c \equiv a + b + c \ [9]$
+					</div>
+					<div class="cm1-note">Un nombre est divisible par 9 si et seulement si la somme de ses chiffres l'est. En TD : et par 11 ?</div>
+				</div>
+			</div>
+		</section>
+
+		<section>
+			<h2>L'alphabet comme $\mathbb{Z}/26\mathbb{Z}$</h2>
+			<div class="main">
+				<div class="alphabet compact">
+					<div>A</div> <div>B</div> <div>C</div> <div>D</div> <div>E</div> <div>F</div> <div>G</div> <div>H</div> <div>I</div> <div>J</div> <div>K</div> <div>L</div> <div>M</div> <div>N</div> <div>O</div> <div>P</div> <div>Q</div> <div>R</div> <div>S</div> <div> T</div> <div>U</div> <div>V</div> <div>W</div> <div>X</div> <div>Y</div> <div>Z</div>
+				</div>
+				<div class="alphabet compact">
+					<div>0</div> <div>1</div> <div>2</div> <div>3</div> <div>4</div> <div>5</div> <div>6</div> <div>7</div> <div>8</div> <div>9</div> <div>10</div> <div>11</div> <div>12</div> <div>13</div> <div>14</div> <div>15</div> <div>16</div> <div>17</div> <div>18</div> <div>19</div> <div>20</div> <div>21</div> <div>22</div> <div>23</div> <div>24</div> <div>25</div>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Chiffrer avec la clé $k$</h3>
+					<div class="cm1-eq">$$ y = x + k \ [26] $$</div>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Déchiffrer</h3>
+					<div class="cm1-eq">$$ x = y - k \ [26] = y + (26 - k) \ [26] $$</div>
+					<div class="cm1-note">Déchiffrer avec la clé $k$, c'est chiffrer avec la clé $26-k$ : une seule fonction suffit.</div>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>En Python</h3>
+					<div class="cm1-eq"><code>chr((ord(c) - 65 + k) % 26 + 65)</code></div>
+					<div class="cm1-note">L'opérateur <code>%</code> de Python renvoie toujours un résultat dans $\{0,\dots,25\}$, même pour $k$ négatif.</div>
+				</div>
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  6. Chiffrement César interactif (inchangé)                   -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Chiffrement César</h2>
+			<div class="main">
+				<div class="alphabet">
+					<div>A</div> <div>B</div> <div>C</div> <div>D</div> <div>E</div> <div>F</div> <div>G</div> <div>H</div> <div>I</div> <div>J</div> <div>K</div> <div>L</div> <div>M</div> <div>N</div> <div>O</div> <div>P</div> <div>Q</div> <div>R</div> <div>S</div> <div> T</div> <div>U</div> <div>V</div> <div>W</div> <div>X</div> <div>Y</div> <div>Z</div>
+				</div>
+				<div class="alphabet shifted" id="alphabetShifted">
+					<div>A</div> <div>B</div> <div>C</div> <div>D</div> <div>E</div> <div>F</div> <div>G</div> <div>H</div> <div>I</div> <div>J</div> <div>K</div> <div>L</div> <div>M</div> <div>N</div> <div>O</div> <div>P</div> <div>Q</div> <div>R</div> <div>S</div> <div> T</div> <div>U</div> <div>V</div> <div>W</div> <div>X</div> <div>Y</div> <div>Z</div>
+					<div>A</div> <div>B</div> <div>C</div> <div>D</div> <div>E</div> <div>F</div> <div>G</div> <div>H</div> <div>I</div> <div>J</div> <div>K</div> <div>L</div> <div>M</div> <div>N</div> <div>O</div> <div>P</div> <div>Q</div> <div>R</div> <div>S</div> <div> T</div> <div>U</div> <div>V</div> <div>W</div> <div>X</div> <div>Y</div> <div>Z</div>
+					<div>A</div> <div>B</div> <div>C</div> <div>D</div> <div>E</div> <div>F</div> <div>G</div> <div>H</div> <div>I</div> <div>J</div> <div>K</div> <div>L</div> <div>M</div> <div>N</div> <div>O</div> <div>P</div> <div>Q</div> <div>R</div> <div>S</div> <div> T</div> <div>U</div> <div>V</div> <div>W</div> <div>X</div> <div>Y</div> <div>Z</div>
+				</div>
+		
+				<div class="twocolumns">
+					<div class="boxed invert hidden" data-fragments="{hidden}">
+					<img src="img/alice.png" style="width:10%;display:block;position:absolute;"/>
+					<div class="formulaire">
+					<label for="message">Message =  </label> <input id="message" type="text" value=""/>	
+					<label for="key">Clé = </label> <input id="key" type="text" value="0"/>
+	
+					<label>Msg. propre =</label><span id="uppermessage"></span>
+					<label>Msg. codé =</label><span id="codedmessage"></span>
+					</div>
+				</div>
+				<div class="boxed invert hidden" data-fragments="{hidden}">
+					<img src="img/bobeponge.png" style="width:10%;display:block;position:absolute;"/>
+					<div class="formulaire">
+					<label for="recu">Reçu =  </label> <input id="recu" type="text" value=""/>	
+					<label for="invkey">Clé inverse = </label> <input id="invkey" type="text" value="0"/>
+	
+					<label>Msg. décodé =</label><span id="decodedmessage"></span>
+					</div>
+				</div>
+				</div>
+				<script>
+					document.getElementById("key").addEventListener("change",(event) => { document.getElementById("alphabetShifted").style.setProperty('--key',event.target.value); } );
+					document.getElementById("invkey").addEventListener("change",(event) => { document.getElementById("alphabetShifted").style.setProperty('--key',event.target.value); } );
+					function nettoie(message){
+						return message.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z]/g, '');
+					}
+					function cesar(message,key){
+						codedmessage="";
+						message=nettoie(message);
+						for(x of message){
+							codedmessage+=String.fromCharCode((x.charCodeAt()-65+key+2600)%26+65);
+						}
+						return codedmessage
+					}
+					function encode(event){
+						message=nettoie(document.getElementById("message").value);
+						document.getElementById("uppermessage").textContent=message;
+						key=parseInt(document.getElementById("key").value);
+						document.getElementById("codedmessage").textContent=cesar(message,key);
+					}
+					function decode(event){
+						message=nettoie(document.getElementById("recu").value);
+						key=parseInt(document.getElementById("invkey").value);
+						document.getElementById("decodedmessage").textContent=cesar(message,key);
+					}
+					document.getElementById("message").addEventListener("change", encode)
+					document.getElementById("key").addEventListener("change", encode)
+					document.getElementById("recu").addEventListener("change", decode)
+					document.getElementById("invkey").addEventListener("change", decode)
+				</script>
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  7. Brute force (inchangé)                                    -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Cryptanalyse&nbsp;: Brute force</h2>
+			<div class="main">
+				<label for="todecrypt">À décoder </label><input type="text" id="todecrypt"/>
+				<div id="bruteforce" class="gridres hidden"> </div>
+			</div>
+			<div class="boxed center middle invert hidden" data-fragments="{hidden}">
+				26 clés, dont l'identité.<br/>
+				Un humain à 5 s par clé : 2 minutes.
+			</div>
+			<script>
+				document.getElementById("todecrypt").addEventListener("change", (event)=>{
+					resultats=document.getElementById("bruteforce");
+					if(resultats.classList.contains('hidden')){
+						resultats.classList.remove("hidden");
+						for(i=0;i<26;i++){
+							resultats.innerHTML+="<span>"+i+"</span><span></span>";
+						}
+					}
+					todecode=document.getElementById("todecrypt").value;
+					alloptions=resultats.children;
+					for(i=0;i<26;i++){
+						alloptions[2*i+1].textContent=cesar(todecode,i);
+					}
+				})
+			</script>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  8. Analyse fréquentielle (inchangé)                          -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Cryptanalyse&nbsp;: Analyse Fréquentielle</h2>
+			<div class="main">
+				<h3>Fréquence des lettres en français</h3>
+				<div class="frequences" id="historef">
+				</div>
+			</div>
+	<script>
+		frequences=[0.08464111604561242, 0.012909230488054308, 0.03671390959804863, 0.041667245168150936, 0.16385606240543918, 0.012625225939885782, 0.013943872784732242, 0.012630441105406674, 0.07535115195237312, 0.003909660415797915, 0.003278927318405353, 0.05629424735283747, 0.02970858301892986, 0.07247313362132647, 0.05744154796538217, 0.028220584116057476, 0.007327852941440353, 0.06880701904855079, 0.07385102212100648, 0.06714926471787078, 0.05139957225093057, 0.012639148164363295, 0.001973212174607952, 0.004283106842752327, 0.005193628200033023, 0.0017112342420044406];
+		histogramme=document.getElementById("historef");
+		letter=65;
+		for(const freq of frequences){
+			histogramme.innerHTML+='<div style="--frequence:'+freq+';"><span>'+String.fromCharCode(letter)+'</span></div>';
+			letter++;
+		}
+	</script>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  9. Prologue (texte original de remplacement, meme effet)     -->
+	<!--     Remplacer le contenu de #prologueSW par le votre si voulu -->
+	<!-- ============================================================ -->
+		<section>
+			<div class="starwars">
+				<div class="perspective" data-fragments="+1{hidden} 3s 10s">
+					<div data-fragments="{defile} 40s" id="prologueSW">
+					<p>
+				Il y a bien longtemps, dans une salle de cours lointaine, très lointaine... C'est une époque de rendus de TP. Depuis leurs places au fond de l'amphithéâtre, Alice et Bob échangent des messages que personne ne doit lire.
+					</p>
+					<p>
+				Leur enseignant, cryptanalyste à ses heures, intercepte chaque billet qui circule de main en main. Pour protéger leurs secrets, les deux complices décident de chiffrer leurs échanges à l'aide d'un procédé vieux de deux mille ans. Ils ignorent encore que la fréquence des lettres trahit toujours la langue française, et que quelques lignes de Python suffiront à percer leur code. La bataille pour la confidentialité ne fait que commencer...
+					</p>
+				</div>
+				</div>
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!-- 10. Fréquences du prologue (inchangé)                         -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Fréquences des lettres du prologue</h2>
+			<div class="main">
+				<div class="frequences" id="histoSW" data-fragments="+1{hideletters} +2{delta}"> </div>
+				<div class="frequences hidden" id="histoRef" data-fragments="{hidden} {delta}"> </div>
+				<div>
+					<div class="hidden" data-fragments="{hidden}">
+						<p>
+						$J_1(m)=\sum_{x\in \mathcal A} |F(m,x)-\overline F(x)|=$<span id="J1"></span></p>
+				</div>
+				</div>
+			</div>
+			<script>
+				text=nettoie(document.getElementById("prologueSW").innerText);
+				function dessineHistos(txt, idHisto, idRef, idJ){
+					freqm=new Array(26).fill(0);
+					for(const x of txt) freqm[x.charCodeAt()-65]++;
+					for(const i in freqm) freqm[i]/=txt.length;
+					h=document.getElementById(idHisto); r=document.getElementById(idRef);
+					h.innerHTML=""; r.innerHTML="";
+					for(let i=0;i<26;i++){
+						L=String.fromCharCode(65+i);
+						if(freqm[i]>frequences[i]){
+							h.innerHTML+='<div style="--frequence:'+freqm[i]+';"><span>'+L+'</span></div>';
+							r.innerHTML+='<div style="--frequence:'+frequences[i]+';"></div>';
+						} else {
+							h.innerHTML+='<div style="--frequence:'+freqm[i]+';"><span class="tohide">'+L+'</span></div>';
+							r.innerHTML+='<div style="--frequence:'+frequences[i]+';"><span>'+L+'</span></div>';
+						}
+					}
+					J=0;
+					for(let i=0;i<26;i++){
+						dJ=freqm[i]-frequences[i];
+						h.children[i].style.setProperty("--diff",Math.max(dJ,0));
+						r.children[i].style.setProperty("--diff",Math.max(-dJ,0));
+						J+=Math.abs(dJ);
+					}
+					document.getElementById(idJ).textContent=J.toFixed(4);
+				}
+				dessineHistos(text,"histoSW","histoRef","J1");
+			</script>
+		</section>
+
+	<!-- ============================================================ -->
+	<!-- 11. Prologue chiffré (inchangé)                               -->
+	<!-- ============================================================ -->
+		<section>
+			<div class="starwars">
+				<h2>Prologue chiffré clé= <input value="0" type="text" id="keyPrologue" /></h2>
+				<div class="main">
+					<div id="prologueCode"></div>
+				</div>
+			</div>
+			<script>
+				function refreshPrologueCode(){
+					text=nettoie(document.getElementById("prologueSW").innerText);
+					document.getElementById("prologueCode").textContent=cesar(text,parseInt(document.getElementById("keyPrologue").value));
+				}
+				refreshPrologueCode();
+				document.getElementById("keyPrologue").addEventListener("change",refreshPrologueCode);
+			</script>
+		</section>
+
+	<!-- ============================================================ -->
+	<!-- 12. Fréquences du prologue chiffré (inchangé)                 -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Fréquences des lettres du prologue chiffré</h2>
+			<div class="main">
+				<div class="frequences" id="histoSW2" data-fragments="+1{hideletters} +2{delta}"> </div>
+				<div class="frequences hidden" id="histoRef2" data-fragments="{hidden} {delta}"> </div>
+				<div>
+					<div class="hidden" data-fragments="{hidden}">
+						<p>
+						$J_1(m)=\sum_{x\in \mathcal A} |F(m,x)-\overline F(x)|=$<span id="J12"></span></p>
+				</div>
+				</div>
+			</div>
+			<script>
+			function refreshHistoCoded(){
+				dessineHistos(nettoie(document.getElementById("prologueCode").innerText),"histoSW2","histoRef2","J12");
+			}
+			refreshHistoCoded();
+			document.getElementById("keyPrologue").addEventListener("change",refreshHistoCoded);
+			</script>
+		</section>
+
+	<!-- ============================================================ -->
+	<!-- 13. min J1 (inchangé)                                         -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Cryptanalyse&nbsp;: $\min J_1$</h2>
+			<div class="main">
+				$$
+					\min_{k \in \{0,\dots,25\}} J_1\big(m - k\big)
+				$$
+				On teste les 26 décalages et on garde celui qui ressemble le plus au français.
+				<div id="minJ" class="gridres"> </div>
+			</div>
+			<script>
+				{
+					resultats=document.getElementById("minJ");
+					for(i=0;i<26;i++) resultats.innerHTML+="<span>"+i+"</span><span></span>";
+					alloptions2=resultats.children;
+					function F(m) {
+						Frequences=new Array(26).fill(0);
+						for(const x of m) Frequences[x.charCodeAt()-65]++;
+						for(const i in Frequences) Frequences[i]/=m.length; 
+						return Frequences;
+					}
+					function J1(m){
+						Frequencesm=F(m);
+						J=0;
+						for(let i=0;i<26;i++) J+=Math.abs(Frequencesm[i]-frequences[i]);
+						return J;
+					}
+					function refreshJ(){
+						Jmin=2; argmin=0;
+						todecode=nettoie(document.getElementById("prologueCode").innerText);
+						for(i=0;i<26;i++){ 
+							valJ=J1(cesar(todecode,-i));
+							alloptions2[2*i+1].textContent=valJ.toFixed(4);
+							if(valJ<Jmin){Jmin=valJ;argmin=i;}
+							alloptions2[2*i+1].classList.remove("optimal");
+						}
+						alloptions2[2*argmin+1].classList.add("optimal");
+					}
+					refreshJ();
+					document.getElementById("keyPrologue").addEventListener("change",refreshJ);
+				}
+			</script>
+		</section>
+
+	<!-- ============================================================ -->
+	<!-- 14. Alternatives pour J1 (inchangé, sert de pont au CM2)      -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Alternatives pour $J_1$</h2>
+			<div class="main">
+				<h3>Différence des histogrammes</h3>
+				$$
+				J_1(m)=\sum_{x\in \mathcal A} |F(m,x)-\overline F(x)|
+				$$
+				<h3>Fréquences maximales coïncident</h3>
+				$$
+				J_1(m)=-F(m,x^*)
+				\text{ avec }
+				\overline F(x^*)=\max_{x\in \mathcal A}\overline F(x)
+				$$
+				<h3>Message le plus probable</h3>
+				$$
+				J_1(m)=-\sum_{x \in m} \ln(\overline F(x))
+				$$
+			</div>
+			<div class="boxed center middle invert hidden" data-fragments="{hidden}">
+				Le choix de la fonction coût est un choix de <b>modèle</b>.<br/>
+				On y reviendra au CM2 : la troisième forme est la bonne.
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!-- 15. Section Vigenère (NOUVEAU)                                -->
+	<!-- ============================================================ -->
+		<section>
+			<h1>Et si la clé était un mot&nbsp;?<br/>Vigenère</h1>
+		</section>
+
+		<section>
+			<h2>Chiffre de Vigenère</h2>
+			<div class="main">
+				<p style="margin:auto;">On écrit le mot-clé sous le message, en le répétant. Chaque lettre est décalée par la lettre de clé située dessous.</p>
+				<table class="cm1-table cm1-vig">
+					<tr><th>Clair</th><td>S</td><td>A</td><td>L</td><td>U</td><td>T</td><td>A</td><td>L</td><td>I</td><td>C</td><td>E</td></tr>
+					<tr><th>Clé</th><td>B</td><td>O</td><td>B</td><td>B</td><td>O</td><td>B</td><td>B</td><td>O</td><td>B</td><td>B</td></tr>
+					<tr><th>Décalage</th><td>1</td><td>14</td><td>1</td><td>1</td><td>14</td><td>1</td><td>1</td><td>14</td><td>1</td><td>1</td></tr>
+					<tr><th>Codé</th><td>T</td><td>O</td><td>M</td><td>V</td><td>H</td><td>B</td><td>M</td><td>W</td><td>D</td><td>F</td></tr>
+				</table>
+				<div class="hidden" data-fragments="{hidden}">
+					<div class="cm1-eq">$$ y_i = x_i + k_{\,i \bmod L} \ [26] $$</div>
+					<div class="cm1-note">Le <b>A</b> est codé <b>O</b> puis <b>B</b> : une même lettre n'a plus une seule image. L'histogramme des fréquences est brouillé.</div>
+				</div>
+				<div class="boxed invert hidden" data-fragments="{hidden}">
+					<div class="formulaire">
+					<label for="vmessage">Message = </label><input id="vmessage" type="text" value="Salut Alice"/>
+					<label for="vkey">Mot-clé = </label><input id="vkey" type="text" value="Bob"/>
+					<label>Codé = </label><span id="vcoded"></span>
+					</div>
+				</div>
+			</div>
+			<script>
+				function vigenere(message, cle){
+					message=nettoie(message); cle=nettoie(cle);
+					if(cle.length==0) return message;
+					out="";
+					for(let i=0;i<message.length;i++){
+						k=cle.charCodeAt(i%cle.length)-65;
+						out+=String.fromCharCode((message.charCodeAt(i)-65+k)%26+65);
+					}
+					return out;
+				}
+				function refreshVig(){
+					document.getElementById("vcoded").textContent=vigenere(document.getElementById("vmessage").value, document.getElementById("vkey").value);
+				}
+				refreshVig();
+				document.getElementById("vmessage").addEventListener("change",refreshVig);
+				document.getElementById("vkey").addEventListener("change",refreshVig);
+			</script>
+		</section>
+
+	<!-- ============================================================ -->
+	<!-- 16. Indice de coïncidence (NOUVEAU)                           -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Reconnaître le chiffrement sans la clé</h2>
+			<div class="main">
+				<h3>Indice de coïncidence</h3>
+				<div class="cm1-eq">
+				$$ IC(m) = \frac{\sum_{x \in \mathcal A} n_x (n_x - 1)}{n(n-1)} $$
+				</div>
+				<div class="cm1-note">Probabilité que deux lettres tirées au hasard dans $m$ soient identiques.</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<div class="cm1-eq">
+					Texte français : $IC \simeq 0{,}078$ &emsp;&emsp; Lettres uniformes : $IC = 1/26 \simeq 0{,}038$
+					</div>
+				</div>
+				<div class="hidden cm1-ic" data-fragments="{hidden}">
+					<label>Prologue en clair :</label><span id="icClair"></span><br/>
+					<label>Prologue par César :</label><span id="icCesar"></span><br/>
+					<label>Prologue par Vigenère, clé <input type="text" id="icKey" value="SECRET" style="width:6em;"/> :</label><span id="icVig"></span>
+				</div>
+			</div>
+			<div class="boxed center middle invert hidden" data-fragments="{hidden}">
+				César <b>conserve</b> l'IC : il ne fait que renommer les lettres.<br/>
+				Vigenère le fait <b>chuter</b> vers $1/26$.<br/>
+				Un seul calcul distingue les deux familles, sans rien savoir de la clé.
+			</div>
+			<script>
+				function IC(m){
+					n=m.length; if(n<2) return 0;
+					cnt=new Array(26).fill(0);
+					for(const x of m) cnt[x.charCodeAt()-65]++;
+					s=0; for(const c of cnt) s+=c*(c-1);
+					return s/(n*(n-1));
+				}
+				function refreshIC(){
+					t=nettoie(document.getElementById("prologueSW").innerText);
+					document.getElementById("icClair").textContent=IC(t).toFixed(4);
+					document.getElementById("icCesar").textContent=IC(cesar(t,7)).toFixed(4);
+					document.getElementById("icVig").textContent=IC(vigenere(t,document.getElementById("icKey").value)).toFixed(4);
+				}
+				refreshIC();
+				document.getElementById("icKey").addEventListener("change",refreshIC);
+			</script>
+		</section>
+
+		<section>
+			<h2>Trouver la longueur de la clé</h2>
+			<div class="main">
+				<div class="cm1-eq">Avec une clé de $L$ lettres, les positions $i,\ i+L,\ i+2L,\ \dots$ sont toutes décalées de $k_i$.</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<div class="cm1-eq">On découpe le message en $L$ colonnes : colonne $i$ = positions $i,\ i+L,\ i+2L,\ \dots$</div>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<div class="cm1-eq">
+					Si $L$ est <b>la bonne</b> longueur : chaque colonne est du français décalé $\Rightarrow IC \simeq 0{,}078$ (invariance par César).<br/>
+					Si $L$ est <b>fausse</b> : chaque colonne mélange plusieurs décalages $\Rightarrow IC \to 1/26$.
+					</div>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<div class="cm1-eq">On calcule l'IC moyen des colonnes pour $M = 1, 2, 3, \dots$ et on retient le <b>premier</b> retour à $0{,}078$.
+					&emsp; Clé : <input type="text" id="icKey2" value="SECRET" style="width:6em;"/></div>
+					<div id="gridIC" class="gridres"></div>
+				</div>
+			</div>
+			<div class="boxed center middle invert hidden" data-fragments="{hidden}">
+				Les multiples de $L$ donnent aussi un pic : découper en $2L$ colonnes, c'est encore du César par colonne.<br/>
+				Prendre $2L$ n'est pas faux (on trouverait la clé répétée deux fois), mais les colonnes sont deux fois plus courtes.
+			</div>
+			<script>
+				function icMoyen(m,L){ let t=0; for(let i=0;i<L;i++){ let col=""; for(let j=i;j<m.length;j+=L) col+=m[j]; t+=IC(col);} return t/L; }
+				{
+					let g=document.getElementById("gridIC");
+					for(let L=1;L<=12;L++) g.innerHTML+="<span>L="+L+"</span><span></span>";
+					function refreshGridIC(){
+						let t=vigenere(nettoie(document.getElementById("prologueSW").innerText), document.getElementById("icKey2").value);
+						let cells=g.children, premier=0;
+						for(let L=1;L<=12;L++){
+							let v=icMoyen(t,L); cells[2*L-1].textContent=v.toFixed(4);
+							cells[2*L-1].classList.remove("optimal"); cells[2*L-1].classList.remove("cm1-pic");
+							if(v>0.065){ cells[2*L-1].classList.add("cm1-pic"); if(!premier) premier=L; }
+						}
+						if(premier) cells[2*premier-1].classList.add("optimal");
+					}
+					refreshGridIC();
+					document.getElementById("icKey2").addEventListener("change",refreshGridIC);
+				}
+			</script>
+		</section>
+
+		<section>
+			<h2>Casser Vigenère</h2>
+			<div class="main">
+				<div class="cm1-eq">
+				$L$ connu, le message découpé en $L$ colonnes : chaque colonne est un <b>chiffre de César</b>.
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<div class="cm1-eq">
+					Sur chaque colonne, $\min J_1$ donne le décalage $k_i$ : on retrouve la clé lettre par lettre, avec le code d'aujourd'hui.
+					</div>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<div class="cm1-eq">
+					Coût : $L \times 26$ essais au lieu de $26^L$.
+					</div>
+					<div class="cm1-note">Allonger la clé ne protège pas. C'est le TP de la semaine prochaine, avec le code d'aujourd'hui.</div>
+				</div>
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!-- 17. La suite                                                  -->
+	<!-- ============================================================ -->
+		<section>
+			<h3>La suite</h3>
+			<div class="main large">
+				<b>Aujourd'hui, TP</b> : César, force brute, analyse fréquentielle.<br/>
+				<b>Semaine 2</b> : Vigenère et indice de coïncidence.<br/>
+				<b>Semaine 3</b> : et si la clé était une permutation quelconque ?<br/>
+				<span class="cm1-note">$26! \simeq 4 \times 10^{26}$ clés. Force brute impossible. Il faudra <em>optimiser</em>.</span>
+			</div>
+		</section>
+			
+	</div>	
+<script type="text/javascript" src="../transitionjs/transition.js"></script>
+<script>
+	function demarre(){
+		TransitionJS.init({
+			rules: [ { selector: '#slides > :not(:first-child)', fragments: '[slides]{--shift++} 2s' } ],
+		});
+	}
+	if (window.MathJax && MathJax.Hub) MathJax.Hub.Queue(demarre); else demarre();
+</script>
+</body>
+
+</html>

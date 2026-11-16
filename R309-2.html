@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<link rel="stylesheet" type="text/css" href="../transitionjs/transition.css">
+	<link rel='stylesheet' type='text/css' href='css/Presentation.css'>
+	<meta charset="UTF-8">
+	<script type="text/x-mathjax-config">
+                        MathJax.Hub.Config({
+                                tex2jax: {
+                                        inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+                                        processEscapes: true
+                                },
+                                TeX: {
+                                        Macros: {
+                                                Z: "\\mathbb{Z}",
+                                                N: "\\mathbb{N}",
+                                                pgcd: "\\texttt{PGCD}"
+                                        }
+                                }
+                        });
+	</script>
+	<script type="text/javascript" src="../../MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"> </script>
+	<title>Cryptographie 3</title>
+	<style>
+		/* Regles locales, prefixees cm3- (memes conventions que cm1- et cm2-). */
+		/* Presentation.css impose font-size:inherit aux tableaux, avec un selecteur contenant #slides :
+		   il faut un selecteur plus fort. 3vmin = taille du tableau au CM1 (0.75 x 4vmin). */
+		body #slides>section table.cm3-plan { font-size: 3vmin; }
+		/* Presentation.css donne un fond blanc a tous les div, donc a #slides, ce qui masque le logo UCA du body. */
+		#slides { background-color: transparent; }
+		.cm3-plan { border-collapse: collapse; margin: 0.5em auto; }
+		.cm3-plan td, .cm3-plan th { border: 1px solid currentColor; padding: 0.15em 0.6em; text-align: center; }
+		.cm3-plan th { font-weight: bold; }
+		.cm3-plan .cm3-now { font-weight: bold; text-decoration: underline; }
+		.cm3-table { border-collapse: collapse; margin: 0.5em auto; font-size: 0.8em; }
+		.cm3-table td, .cm3-table th { border: 1px solid currentColor; padding: 0.15em 0.6em; text-align: center; }
+		.cm3-table td { font-family: monospace; }
+		.cm3-eq { font-size: 1.15em; margin: 0.4em 0; }
+		.cm3-note { font-size: 0.8em; margin-top: 0.6em; }
+		.cm3-initiale { color: var(--auxiliarycolor); font-weight: bold; }
+		.cm3-bad { color: #d33; font-weight: bold; }
+		/* Message d'alerte hors du flux : son apparition ne deplace rien, quitte a recouvrir le bas du transparent. */
+		.cm3-alerte { position: absolute; left: 0; right: 0; bottom: 0.5em; margin: 0; text-align: center; pointer-events: none; }
+		.cm3-demo { display: grid; grid-template-columns: max-content max-content; grid-gap: 0.25em 0.8em; justify-content: center; align-items: baseline; text-align: left; }
+		.cm3-demo label { text-align: right; }
+		.cm3-demo input { font-family: monospace; font-size: inherit; width: 8em; }
+		.cm3-demo span { font-family: monospace; }
+	</style>
+</head>
+	<body class="UCA">
+	<div id="slides">
+
+	<!-- ============================================================ -->
+	<!--  1. Titre                                                     -->
+	<!-- ============================================================ -->
+		<section>
+		<hgroup class="boxed invert">
+				<h1>Cryptographie et sécurité</h1>
+				<h2>CM3&nbsp;: chiffrement asymétrique et RSA</h2>
+				<h2>O. Pantz</h2>
+	 	</hgroup>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  2. Plan du cours (même tableau que CM1 et CM2)               -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Plan du cours</h2>
+			<main>
+				<table class="cm3-plan">
+					<tr><th></th><th>Semaine</th><th>CM</th><th>TD / TP</th></tr>
+					<tr><td>1</td><td>8 sept.</td><td>Chiffrement César et Vigenère</td><td>César</td></tr>
+					<tr><td>2</td><td>15 sept.</td><td></td><td>Vigenère</td></tr>
+					<tr><td>3</td><td>22 sept.</td><td>Chiffrement par substitution</td><td>Permutations</td></tr>
+					<tr><td>4</td><td>29 sept.</td><td></td><td>Substitution I</td></tr>
+					<tr class="cm3-now"><td>5</td><td>6 oct.</td><td>Chiffrement asymétrique et RSA</td><td>Substitution II</td></tr>
+					<tr><td>6</td><td>13 oct.</td><td></td><td><b>Évaluation intermédiaire</b> + RSA I : outils arithmétiques</td></tr>
+					<tr><td>7</td><td>20 oct.</td><td>Codes correcteurs</td><td>RSA II : clés, chiffrement, signature</td></tr>
+					<tr><td>8</td><td>3 nov.</td><td></td><td>Code de Hamming</td></tr>
+					<tr><td>9</td><td>10 nov.</td><td>Hachage, blockchain</td><td>Hachage : collisions, mots de passe</td></tr>
+					<tr><td>10</td><td>17 nov.</td><td></td><td>Masque jetable, AES</td></tr>
+				</table>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  3. Plan de la présentation                                   -->
+	<!--     Les liens #N pointent vers la N-ième diapositive.         -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Chiffrement asymétrique et RSA</h2>
+			<main>
+				<ul>
+					<li><a href="#4">Chiffrement asymétrique</a>
+						<ul>
+							<li>Un chiffrement asymétrique, pourquoi&nbsp;?</li>
+							<li>Clé publique et clé privée</li>
+							<li>Deux usages : chiffrer, signer</li>
+						</ul>
+					</li>
+					<li><a href="#9">Chiffrement RSA</a>
+						<ul>
+							<li>Définition des clés, exemple</li>
+							<li>Chiffrement et déchiffrement, exemple</li>
+						</ul>
+					</li>
+					<li><a href="#15">Un peu d'arithmétique</a>
+						<ul>
+							<li>Calcul dans $\Z/n\Z$</li>
+							<li>PGCD, algorithme d'Euclide</li>
+							<li>Inverse modulaire</li>
+							<li>Théorème d'Euler</li>
+						</ul>
+					</li>
+					<li><a href="#23">Mise en œuvre</a>
+						<ul>
+							<li>Calcul des puissances</li>
+							<li>Génération de $d$</li>
+							<li>Génération de nombres premiers</li>
+							<li>Sécurité</li>
+						</ul>
+					</li>
+				</ul>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  4. Chiffrement asymétrique                                   -->
+	<!-- ============================================================ -->
+		<section>
+			<h1>Chiffrement asymétrique</h1>
+		</section>
+
+		<section>
+			<h2>Pourquoi&nbsp;?</h2>
+			<main>
+				<div class="ulcontainer readable-width">
+				<ul>
+					<li>Chiffrement <b>symétrique</b> : Alice et Bob partagent la <em>même</em> clé.</li>
+					<li class="hidden" data-fragments="{hidden}">À distance, comment échanger cette clé sans qu'elle soit interceptée&nbsp;?</li>
+				</ul>
+				</div>
+			</main>
+		</section>
+
+		<section>
+			<h2>Clé publique et clé privée</h2>
+			<main>
+				<p>Bob possède deux clés :</p>
+				<div class="ulcontainer readable-width">
+				<ul>
+					<li>une clé <b>publique</b> $\sigma_B$, connue de tous ;</li>
+					<li>une clé <b>privée</b> $\sigma_B^{-1}$, que seul Bob connaît.</li>
+				</ul>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<p>Chacune défait ce que l'autre a fait :</p>
+					$$ \sigma_B^{-1}\big(\sigma_B(m)\big) = m \qquad\text{et}\qquad \sigma_B\big(\sigma_B^{-1}(m)\big) = m $$
+				</div>
+			</main>
+			<div class="boxed center middle invert hidden align-center" data-fragments="{hidden}">
+				Tout repose sur une exigence :<br/>
+				connaître $\sigma_B$ ne doit pas permettre de calculer $\sigma_B^{-1}$.
+			</div>
+		</section>
+
+		<section>
+			<h2>Deux usages</h2>
+			<main>
+				<div class="two-columns">
+				<div>
+					<h3 class="align-center">Chiffrer</h3>
+					<p>Alice envoie à Bob</p>
+					$$ c = \sigma_B(m) $$
+					<p>Bob lit</p>
+					$$ m = \sigma_B^{-1}(c) $$
+					<p><b>Seul Bob peut lire.</b></p>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3 class="align-center">Signer</h3>
+					<p>Bob publie $m$ et sa signature</p>
+					$$ s = \sigma_B^{-1}(m) $$
+					<p>Chacun peut vérifier que</p>
+					$$ \sigma_B(s) = m $$
+					<p><b>Seul Bob a pu signer.</b></p>
+				</div>
+				</div>
+			</main>
+		</section>
+
+		<section>
+			<h2>Chiffrer et signer</h2>
+			<main>
+				<p>$\sigma_A$, $\sigma_A^{-1}$ : clés publique et privée d'Alice.<br/>
+				$\sigma_B$, $\sigma_B^{-1}$ : clés publique et privée de Bob.</p>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Bob envoie à Alice</h3>
+					$$ M = \sigma_A\big(\sigma_B^{-1}(m)\big) $$
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Alice lit</h3>
+					$$ \sigma_B\big(\sigma_A^{-1}(M)\big) = m $$
+				</div>
+			</main>
+			<div class="boxed center middle invert hidden align-center" data-fragments="{hidden}">
+				Seule Alice peut lire, seul Bob a pu écrire.<br/>
+				Et aucune clé secrète n'a circulé.
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  9. RSA                                                       -->
+	<!-- ============================================================ -->
+		<section>
+			<h1>Chiffrement RSA</h1>
+		</section>
+
+		<section>
+			<h2>Définition des clés</h2>
+			<main>
+				<ol>
+					<li>Bob choisit deux nombres premiers distincts $p$ et $q$.</li>
+					<li>Bob calcule $n = pq$.</li>
+					<li>Bob calcule <em>l'indicateur d'Euler</em> de $n$,
+						$$
+							\varphi(n) = (p-1)(q-1).
+						$$
+					</li>
+					<li>Bob choisit un nombre $e$ tel que
+						<ul>
+							<li>$1 \lt e \lt \varphi(n)$</li>
+							<li>$e$ et $\varphi(n)$ premiers entre eux.</li>
+						</ul>
+					</li>
+					<li>Bob calcule l'inverse modulaire de $e$, qu'il note $d$
+						$$
+							ed \equiv 1 \ [\varphi(n)].
+						$$
+					</li>
+				</ol>
+			</main>
+			<div class="boxed center middle invert hidden align-center" data-fragments="{hidden}">
+				La clé <b>publique</b> de Bob est $(e,n)$.<br/>
+				La clé <b>privée</b> de Bob est $(d,n)$.<br/>
+				$p$, $q$ et $\varphi(n)$ restent secrets.
+			</div>
+		</section>
+
+		<section>
+			<h2>Exemple de clés</h2>
+			<main>
+				<ol>
+					<li>Bob choisit les deux nombres premiers $p = 13$ et $q = 23$.</li>
+					<li>Bob calcule $n = pq = 13 \times 23 = 299$.</li>
+					<li>Bob calcule <em>l'indicateur d'Euler</em> de $n$,
+						$$
+							\varphi(n) = (p-1)(q-1) = 12 \times 22 = 264.
+						$$
+					</li>
+					<li>Bob choisit $e = 7$. On a bien
+						<ul>
+							<li>$1 \lt 7 \lt 264$</li>
+							<li>$7$ et $264 = 2^3 \times 3 \times 11$ premiers entre eux.</li>
+						</ul>
+					</li>
+					<li>Bob calcule l'inverse modulaire de $e$. Il trouve $d = 151$
+						$$
+							ed = 7 \times 151 = 1057 = 1 + 4 \times 264 \equiv 1 \ [264].
+						$$
+					</li>
+				</ol>
+			</main>
+			<div class="boxed center middle invert hidden align-center" data-fragments="{hidden}">
+				Clé publique de Bob : $(e,n) = (7, 299)$.<br/>
+				Clé privée de Bob : $(d,n) = (151, 299)$.
+			</div>
+		</section>
+
+		<section>
+			<h2>Chiffrement et déchiffrement</h2>
+			<main>
+				<p>Le message est représenté par un entier $m$ avec $0 \leq m \lt n$.</p>
+				<div class="two-columns">
+				<div>
+					<h3 class="align-center">Chiffrer : clé publique $(e,n)$</h3>
+					$$ \sigma_B(m) = m^e \ [n] $$
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3 class="align-center">Déchiffrer : clé privée $(d,n)$</h3>
+					$$ \sigma_B^{-1}(c) = c^d \ [n] $$
+				</div>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Signer</h3>
+					<div class="cm3-eq">Bob calcule $s = m^d \ [n]$. Chacun vérifie que $s^e \equiv m \ [n]$.</div>
+				</div>
+			</main>
+		</section>
+
+		<section>
+			<h2>Exemple</h2>
+			<main>
+				<p>Alice veut envoyer $m = 50$ à Bob, de clé publique $(7, 299)$ :</p>
+				$$ c = m^e \ [n] = 50^{7} \ [299] = 54 $$
+				<div class="hidden" data-fragments="{hidden}">
+				<p>Bob déchiffre avec sa clé privée $(151, 299)$ :</p>
+				$$ c^d \ [n] = 54^{151} \ [299] = 50 = m $$
+				</div>
+			</main>
+			<div class="boxed center middle invert hidden align-center" data-fragments="{hidden}">
+				$$
+				\sigma_B^{-1}\big(\sigma_B(m)\big) = (m^{e})^{d} = m^{ed} \ [n] \stackrel{?}{=} m
+				$$
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  14. RSA en direct                                            -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>RSA en direct</h2>
+			<main>
+				<div class="two-columns">
+				<div class="boxed invert">
+					<h3 class="align-center">Bob fabrique ses clés</h3>
+					<div class="cm3-demo">
+						<label for="rsaP">$p$ =</label><input id="rsaP" type="text" value="13"/>
+						<label for="rsaQ">$q$ =</label><input id="rsaQ" type="text" value="23"/>
+						<label for="rsaE">$e$ =</label><input id="rsaE" type="text" value="7"/>
+						<label>$n$ =</label><span id="rsaN"></span>
+						<label>$\varphi(n)$ =</label><span id="rsaPhi"></span>
+						<label>$d$ =</label><span id="rsaD"></span>
+					</div>
+				</div>
+				<div class="boxed invert">
+					<h3 class="align-center">Alice chiffre, Bob déchiffre</h3>
+					<div class="cm3-demo">
+						<label for="rsaM">$m$ =</label><input id="rsaM" type="text" value="50"/>
+						<label>$c = m^e \ [n]$ =</label><span id="rsaC"></span>
+						<label>$c^d \ [n]$ =</label><span id="rsaM2"></span>
+					</div>
+				</div>
+				</div>
+				<p id="rsaErr" class="cm3-bad cm3-alerte"></p>
+			</main>
+			<script>
+				// Arithmetique en BigInt.
+				function pgcdBig(a,b){ while(b!=0n){ [a,b]=[b,a%b]; } return a; }
+				function bezoutBig(u,v){            // renvoie [x,y] tel que u x + v y = pgcd(u,v)
+					if(v==0n) return [1n,0n];
+					const [x,y]=bezoutBig(v,u%v);
+					return [y, x-(u/v)*y];
+				}
+				function puissanceMod(a,s,n){       // a^s [n] par elevations au carre successives
+					let r=1n%n; a=((a%n)+n)%n;
+					while(s>0n){ if(s&1n) r=r*a%n; a=a*a%n; s>>=1n; }
+					return r;
+				}
+				function estPremierBig(p){          // divisions successives : reserve aux petits nombres
+					if(p<2n) return false;
+					for(let k=2n;k*k<=p;k++) if(p%k==0n) return false;
+					return true;
+				}
+				function lisEntier(id){
+					const v=document.getElementById(id).value.trim();
+					if(!/^[0-9]{1,12}$/.test(v)) return null;
+					return BigInt(v);
+				}
+				function refreshRSA(){
+					const out=function(id,v){ document.getElementById(id).textContent=v; };
+					for(const id of ["rsaN","rsaPhi","rsaD","rsaC","rsaM2"]) out(id,"-");
+					out("rsaErr","");
+					const p=lisEntier("rsaP"), q=lisEntier("rsaQ"), e=lisEntier("rsaE"), m=lisEntier("rsaM");
+					if(p===null || q===null || e===null || m===null){ out("rsaErr","Entiers positifs d'au plus 12 chiffres."); return; }
+					if(!estPremierBig(p)){ out("rsaErr","p = "+p+" n'est pas premier."); return; }
+					if(!estPremierBig(q)){ out("rsaErr","q = "+q+" n'est pas premier."); return; }
+					if(p==q){ out("rsaErr","p et q doivent être distincts."); return; }
+					const n=p*q, phi=(p-1n)*(q-1n);
+					out("rsaN",n); out("rsaPhi",phi);
+					if(e<=1n || e>=phi){ out("rsaErr","Il faut 1 < e < "+phi+"."); return; }
+					const g=pgcdBig(e,phi);
+					if(g!=1n){ out("rsaErr","PGCD(e, φ(n)) = "+g+" : e n'est pas inversible modulo φ(n)."); return; }
+					const d=((bezoutBig(e,phi)[0]%phi)+phi)%phi;
+					out("rsaD",d);
+					if(m>=n){ out("rsaErr","Il faut m < n = "+n+"."); return; }
+					const c=puissanceMod(m,e,n);
+					out("rsaC",c); out("rsaM2",puissanceMod(c,d,n));
+				}
+				refreshRSA();
+				for(const id of ["rsaP","rsaQ","rsaE","rsaM"]) document.getElementById(id).addEventListener("change",refreshRSA);
+			</script>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  15. Arithmétique                                             -->
+	<!-- ============================================================ -->
+		<section>
+			<h1>Un peu d'arithmétique</h1>
+		</section>
+
+		<section>
+			<h2>Calcul dans $\Z/n\Z$ (rappel du CM1)</h2>
+			<main>
+				<div data-fragments="{removed}">
+					<h3>Définition</h3>
+					$$ a \equiv b \ [n] $$
+					<p>si et seulement si</p>
+					$$ n \text{ divise } a - b $$
+					<p>c'est-à-dire</p>
+					$$ \exists k \in \Z,\quad a = b + kn. $$
+				</div>
+				<div class="removed" data-fragments="+0{removed}">
+					<h3>Addition, soustraction, multiplication</h3>
+					<p>Si $a \equiv a' \ [n]$ et $b \equiv b' \ [n]$, alors</p>
+					$$ a + b \equiv a' + b' \ [n] $$
+					$$ a - b \equiv a' - b' \ [n] $$
+					$$ ab \equiv a'b' \ [n]. $$
+				</div>
+			</main>
+			<div class="boxed center middle invert hidden align-center" data-fragments="{hidden}">
+				On peut additionner, soustraire et multiplier <em>normalement</em>.<br/>
+				<h3 class="align-center">Attention&nbsp;!</h3>
+				On ne peut pas diviser <em>normalement</em> :
+				$$ 2 \times 3 \equiv 0 \ [6] \quad\text{et pourtant}\quad 3 \not\equiv 0 \ [6]. $$
+			</div>
+		</section>
+
+		<section>
+			<h2>PGCD</h2>
+			<main>
+				<p><span class="cm3-initiale">P</span>lus <span class="cm3-initiale">G</span>rand <span class="cm3-initiale">C</span>ommun <span class="cm3-initiale">D</span>iviseur</p>
+				$$ \pgcd(12, 21) = 3. $$
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Nombres premiers entre eux</h3>
+					<p>$a$ et $b$ sont premiers entre eux si et seulement si</p>
+					$$ \pgcd(a,b) = 1. $$
+					<p>Exemple :</p>
+					$$ \pgcd(14, 55) = 1. $$
+				</div>
+			</main>
+			<div class="boxed center middle invert hidden align-center" data-fragments="{hidden}">
+				Pour RSA, Bob doit choisir $e$ tel que
+				$$ \pgcd\big(e, \varphi(n)\big) = 1. $$
+			</div>
+		</section>
+
+		<section>
+			<h2>Algorithme d'Euclide</h2>
+			<main>
+				$$ \pgcd(a, 0) = a \qquad\qquad \pgcd(a, b) = \pgcd(b, a) $$
+				$$ \pgcd(a, b) = \pgcd(b,\ a \,\%\, b) $$
+				<p>où $a \,\%\, b$ est le reste de la division euclidienne :</p>
+				$$ a = (a /\!/ b)\, b + a \,\%\, b, \qquad 0 \leq a \,\%\, b \lt b. $$
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Exemple</h3>
+					$$ \pgcd(264, 7) = \pgcd(7, 5) = \pgcd(5, 2) $$
+					$$ = \pgcd(2, 1) = \pgcd(1, 0) = 1 $$
+				</div>
+			</main>
+		</section>
+
+		<section>
+			<h2>Bézout et inverse modulaire</h2>
+			<main>
+				<h3>Théorème de Bézout</h3>
+				<p>Pour tous $u, v \in \N$, il existe $x, y \in \Z$ tels que</p>
+				$$ ux + vy = \pgcd(u, v). $$
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Inverse modulaire</h3>
+					<p>Si $u$ et $v$ sont premiers entre eux, alors $ux + vy = 1$, donc</p>
+					$$ ux \equiv 1 \ [v]. $$
+					<p>On dit que $x$ est l'inverse de $u$ modulo $v$.</p>
+				</div>
+			</main>
+			<div class="boxed center middle invert hidden align-center" data-fragments="{hidden}">
+				$u$ est inversible modulo $v$ si et seulement si $\pgcd(u,v) = 1$.<br/>
+				<br/>
+				$2$ n'est pas inversible modulo $6$ : voilà pourquoi on ne pouvait pas « diviser par $2$ ».
+			</div>
+		</section>
+
+		<section>
+			<h2>Calcul de l'inverse modulaire</h2>
+			<main>
+				<p>On note $B(u,v) = (x,y)$ une solution de</p>
+				$$ ux + vy = \pgcd(u,v). $$
+				$$ B(u, 0) = (1, 0) $$
+				$$ B(u, v) = \big(y',\ x' - (u /\!/ v)\, y'\big) $$
+				<p>avec</p>
+				$$ (x', y') = B(v,\ u \,\%\, v). $$
+			</main>
+			<div class="boxed center middle invert hidden align-center" data-fragments="{hidden}">
+				Bob peut ainsi calculer l'inverse modulaire $d$ de $e$.<br/>
+				Si
+				$$ \pgcd\big(e, \varphi(n)\big) = 1, $$
+				soit $(d, k) = B\big(e, \varphi(n)\big)$
+				$$ de + k\varphi(n) = 1 $$
+				c'est-à-dire
+				$$ de \equiv 1 \ [\varphi(n)]. $$
+			</div>
+		</section>
+
+		<section>
+			<h2>Indicateur d'Euler</h2>
+			<main>
+				<p>$\varphi(n)$ = nombre d'entiers de $\{1, \dots, n\}$ premiers avec $n$.</p>
+				<div class="hidden" data-fragments="{hidden}">
+					<div class="cm3-eq">Si $p$ est premier : $\ \varphi(p) = p - 1$.</div>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<div class="cm3-eq">Si $n = pq$ avec $p \neq q$ premiers :</div>
+					$$ \varphi(n) = pq - q - p + 1 = (p-1)(q-1). $$
+				</div>
+			</main>
+		</section>
+
+		<section>
+			<h2>Théorème d'Euler</h2>
+			<main>
+				<p>Si $m$ est premier avec $n$, alors</p>
+				$$ m^{\varphi(n)} \equiv 1 \ [n]. $$
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Application à RSA</h3>
+					<p>$ed \equiv 1 \ [\varphi(n)]$ signifie $ed = 1 + k\varphi(n)$, donc</p>
+					$$ m^{ed} = m \times \big(m^{\varphi(n)}\big)^{k} \equiv m \times 1^k \equiv m \ [n]. $$
+				</div>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  23. Mise en oeuvre                                           -->
+	<!-- ============================================================ -->
+		<section>
+			<h1>Mise en œuvre</h1>
+		</section>
+
+		<section>
+			<h2>Calcul des puissances</h2>
+			<main>
+				<p>Pour déchiffrer, Bob doit calculer $54^{151} \ [299]$. Deux idées :</p>
+				<div class="ulcontainer readable-width">
+				<ul>
+					<li>réduire modulo $n$ <b>après chaque multiplication</b> ;</li>
+					<li class="hidden" data-fragments="{hidden}">élever au carré plutôt que multiplier $150$ fois.</li>
+				</ul>
+				</div>
+				<div class="hidden" data-fragments="{hidden}">
+					<p>Avec $r = s /\!/ 2$ :</p>
+					$$ a^s = \big(a^{r}\big)^2 \ \text{ si } s \text{ est pair} $$
+					$$ a^s = a \times \big(a^{r}\big)^2 \ \text{ si } s \text{ est impair} $$
+				</div>
+			</main>
+		</section>
+
+		<section>
+			<h2>Génération de $d$</h2>
+			<main>
+				<p>Bob a choisi $p$ et $q$, donc $n$ et $\varphi(n)$. Il cherche $e$ premier avec $\varphi(n)$, $1 \lt e \lt \varphi(n)$, et $d$ tel que</p>
+				$$ ed \equiv 1 \ [\varphi(n)]. $$
+				<p>Pour cela, Bob choisit $e$ au hasard et résout</p>
+				$$ e x + \varphi(n)\, y = \pgcd\big(e, \varphi(n)\big). $$
+				<p>Si $\pgcd\big(e, \varphi(n)\big) = 1$, alors $d = x \ \%\ \varphi(n)$. Sinon, Bob essaie avec un autre nombre $e$.</p>
+			</main>
+			<div class="boxed center middle invert hidden align-center" data-fragments="{hidden}">
+				En pratique :
+				$$ e = 65537 = 2^{16} + 1. $$
+			</div>
+		</section>
+
+		<section>
+			<h2>Génération de nombres premiers</h2>
+			<main>
+				<p>On tire un nombre impair $p$ au hasard.</p>
+				<p>On teste s'il est premier. Sinon, on recommence.</p>
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Test de Fermat</h3>
+					<p>Si $p$ est premier, alors pour tout $a \in \{1, \dots, p-1\}$</p>
+					$$ a^{p-1} \equiv 1 \ [p]. $$
+					<p>Si $a^{p-1} \not\equiv 1 \ [p]$ pour <b>un</b> $a$ : $p$ n'est <b>pas</b> premier.</p>
+				</div>
+			</main>
+			<div class="boxed center middle invert hidden align-center" data-fragments="{hidden}">
+				Test <b>probabiliste</b> : s'il réussit, $p$ est <em>très probablement</em> premier.<br/>
+				Autour de $N$, environ un nombre sur $\ln N$ est premier :<br/>
+				pour $1024$ bits, un sur $710$. La recherche aboutit vite.
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  27. Sécurité                                                 -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Pourquoi est-ce sûr&nbsp;?</h2>
+			<main>
+				<p>Ève connaît $(e, n)$. Pour trouver $d$, il lui faut $\varphi(n) = (p-1)(q-1)$, donc $p$ et $q$ : elle doit <b>factoriser</b> $n$.</p>
+				<div class="hidden" data-fragments="{hidden}">
+					<table class="cm3-table">
+						<tr><th></th><th>Taille de $n$</th><th>Factorisation</th></tr>
+						<tr><th>Notre exemple</th><td>299 (9 bits)</td><td>immédiate : 13 × 23</td></tr>
+						<tr><th>Record (2020)</th><td>829 bits, 250 chiffres</td><td>2700 années de calcul d'un cœur</td></tr>
+						<tr><th>En pratique</th><td>2048 bits, 617 chiffres</td><td>hors de portée</td></tr>
+					</table>
+				</div>
+				<div class="hidden cm3-note" data-fragments="{hidden}">
+					Multiplier $p$ et $q$ est facile, retrouver $p$ et $q$ à partir de $n$ est difficile : c'est une fonction <b>à sens unique</b>.
+				</div>
+			</main>
+			<div class="boxed center middle invert hidden align-center" data-fragments="{hidden}">
+				La factorisation est <em>réputée</em> difficile : personne ne l'a démontré.<br/>
+				Un ordinateur quantique suffisamment grand la rendrait facile (algorithme de Shor).
+			</div>
+		</section>
+
+		<section>
+			<h2>RSA en pratique</h2>
+			<main>
+				<div class="ulcontainer readable-width">
+				<ul>
+					<li>RSA est <b>lent</b> : on ne chiffre pas un fichier avec. On chiffre une clé symétrique, qui chiffre le fichier (AES, semaine 10).</li>
+					<li class="hidden" data-fragments="{hidden}">On ne signe pas le message entier, mais son <b>empreinte</b> (hachage, semaine 9).</li>
+					<li class="hidden" data-fragments="{hidden}">Tel quel, le même $m$ donne toujours le même $c$ : Ève peut tester ses hypothèses avec la clé publique. En pratique, on ajoute de l'aléa au message avant de chiffrer (<em>padding</em>).</li>
+				</ul>
+				</div>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  29. À retenir                                                -->
+	<!-- ============================================================ -->
+		<section>
+			<h3>À retenir</h3>
+			<main>
+				<p>Clé publique $(e, n)$ pour chiffrer et vérifier, clé privée $(d, n)$ pour déchiffrer et signer.</p>
+				<p>Euclide étendu fabrique la clé, le théorème d'Euler explique pourquoi elle marche, l'exponentiation rapide la rend utilisable.</p>
+				<p>La sécurité repose sur un calcul facile dans un sens, difficile dans l'autre.</p>
+			</main>
+		</section>
+
+	</div>	
+<script type="text/javascript" src="../transitionjs/transition.js"></script>
+<script>
+	function demarre(){
+		TransitionJS.init({
+			rules: [ { selector: '#slides > :not(:first-child)', fragments: '[slides]{--shift++} 2s' } ],
+		});
+	}
+	if (window.MathJax && MathJax.Hub) MathJax.Hub.Queue(demarre); else demarre();
+</script>
+</body>
+
+</html>

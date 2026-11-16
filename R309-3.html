@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/pantzO/transitionjs@2.1.0/transition.css">
+	<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/pantzO/transitionjs@2.1.0/poll.css">
+	<link rel='stylesheet' type='text/css' href='css/Presentation.css'>
+	<meta charset="UTF-8">
+	<script type="text/x-mathjax-config">
+                        MathJax.Hub.Config({
+                                tex2jax: {
+                                        inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+                                        processEscapes: true
+                                },
+                                TeX: {
+                                        Macros: {
+                                                Z: "\\mathbb{Z}",
+                                                N: "\\mathbb{N}",
+                                                Img: "\\operatorname{Im}",
+                                                Card: "\\operatorname{Card}"
+                                        }
+                                }
+                        });
+	</script>
+	<script type="text/javascript" src="../../MathJax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"> </script>
+	<title>Cryptographie 4</title>
+	<!--
+		Sondage (poll.js) : ouvrir le deck avec ?key=<clé présentateur> pour piloter le vote ;
+		ajouter &reset=1 pour effacer les votes d'une répétition. Sans clé, le deck affiche seulement les résultats.
+	-->
+	<style>
+		/* Regles locales, prefixees cm4- (memes conventions que cm1- a cm3-). */
+		/* Presentation.css impose font-size:inherit aux tableaux, avec un selecteur contenant #slides :
+		   il faut un selecteur plus fort. 3vmin = taille du tableau au CM1 (0.75 x 4vmin). */
+		body #slides>section table.cm4-plan { font-size: 3vmin; }
+		/* Presentation.css donne un fond blanc a tous les div, donc a #slides, ce qui masque le logo UCA du body. */
+		#slides { background-color: transparent; }
+		.cm4-plan { border-collapse: collapse; margin: 0.5em auto; }
+		.cm4-plan td, .cm4-plan th { border: 1px solid currentColor; padding: 0.15em 0.6em; text-align: center; }
+		.cm4-plan th { font-weight: bold; }
+		.cm4-plan .cm4-now { font-weight: bold; text-decoration: underline; }
+
+		/* Classes d'effet reprises de l'ancien R309-2.css (variables de Presentation.css). */
+		.auxicolor { --fontcolor: var(--auxiliarycolor); }
+		.auxicolor.invert { --fontcolor: var(--secondarycolor); --backgroundcolor: var(--auxiliarycolor); }
+		.hiddenContent { border-color: inherit; color: var(--backgroundcolor); }
+
+		/* Messages binaires. Modele "separate" : chaque cellule porte ses propres bords, de sorte
+		   que faire apparaitre le bit de parite (opacite) ne change aucune largeur. */
+		.cm4-msg { border-collapse: separate; border-spacing: 0; margin: 0.4em auto; }
+		.cm4-msg td { border: 0.05em solid var(--maincolor); border-width: 0 0.05em 0.05em 0; padding: 0 0.5em; text-align: center; }
+		.cm4-msg tr:first-child td { border-top-width: 0.05em; }
+		.cm4-msg td:first-child, .cm4-msg td.cm4-lab + td, .cm4-msg #bitparite + td { border-left-width: 0.05em; }
+		.cm4-msg #bitparite { border-right-width: 0; }
+		.cm4-msg td.cm4-lab { border-width: 0; font-size: 0.6em; text-align: right; padding-right: 0.6em; }
+
+		/* Grilles de Hamming : 16 colonnes (positions 0 a 15), memes bordures que l'ancien R309-2.css */
+		.cm4-grid { display: grid; grid-template-columns: repeat(16, 1fr); margin: 0.5em auto; }
+		.cm4-grid > div { border: 3px solid var(--maincolor); padding: 0 0.5em; text-align: center; }
+		.cm4-pow { font-weight: bold; }
+		.cm4-syn { min-height: 0.8em; }
+		.cm4-label { min-height: 1.5em; margin: 0.2em 0; text-align: center; }
+		.cm4-three { display: grid; grid-template-columns: repeat(3, 1fr); grid-gap: 1em; }
+		.cm4-portrait { height: 45vh; }
+		.cm4-note { font-size: 0.8em; margin-top: 0.6em; }
+
+		/* Sondage */
+		/* Diapo du sondage : QR code a gauche, question a droite, adresse en sous-titre */
+		.cm4-url { text-align: center; }
+		.cm4-url::before { content: attr(data-poll-url); }
+		.cm4-sondage { display: grid; grid-template-columns: max-content 1fr; grid-gap: 0 2em; align-items: center; }
+		.cm4-sondage-qr img.poll-qr { width: 40vmin; height: 40vmin; display: block; }
+		.cm4-sondage-seul { grid-template-columns: 1fr; max-width: 30em; margin: 0 auto; }
+		.poll { margin: 0; }
+		/* Reponses encadrees comme sur les telephones (barres de resultats de poll.css a l'interieur) */
+		.poll ol { list-style: none; padding: 0; margin: 0.6em 0 0 0; }
+		.poll ol li { border: 0.08em solid currentColor; border-radius: 0.6em; padding: 0.3em 2.5em 0.3em 0.8em; margin: 0.4em 0; overflow: hidden; }
+	</style>
+</head>
+	<body class="UCA">
+	<div id="slides">
+
+	<!-- ============================================================ -->
+	<!--  1. Titre                                                     -->
+	<!-- ============================================================ -->
+		<section>
+		<hgroup class="boxed">
+				<h1>Cryptographie et sécurité</h1>
+				<h2>CM4&nbsp;: codes correcteurs d'erreurs</h2>
+				<h2>O. Pantz</h2>
+	 	</hgroup>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  2. Plan du cours (même tableau que CM1 à CM3)                -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Plan du cours</h2>
+			<main>
+				<table class="cm4-plan">
+					<tr><th></th><th>Semaine</th><th>CM</th><th>TD / TP</th></tr>
+					<tr><td>1</td><td>8 sept.</td><td>Chiffrement César et Vigenère</td><td>César</td></tr>
+					<tr><td>2</td><td>15 sept.</td><td></td><td>Vigenère</td></tr>
+					<tr><td>3</td><td>22 sept.</td><td>Chiffrement par substitution</td><td>Permutations</td></tr>
+					<tr><td>4</td><td>29 sept.</td><td></td><td>Substitution I</td></tr>
+					<tr><td>5</td><td>6 oct.</td><td>Chiffrement asymétrique et RSA</td><td>Substitution II</td></tr>
+					<tr><td>6</td><td>13 oct.</td><td></td><td><b>Évaluation intermédiaire</b> + RSA I : outils arithmétiques</td></tr>
+					<tr class="cm4-now"><td>7</td><td>20 oct.</td><td>Codes correcteurs</td><td>RSA II : clés, chiffrement, signature</td></tr>
+					<tr><td>8</td><td>3 nov.</td><td></td><td>Code de Hamming</td></tr>
+					<tr><td>9</td><td>10 nov.</td><td>Hachage, blockchain</td><td>Hachage : collisions, mots de passe</td></tr>
+					<tr><td>10</td><td>17 nov.</td><td></td><td>Masque jetable, AES</td></tr>
+				</table>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  3. Plan de la présentation                                   -->
+	<!--     Les liens #N pointent vers la N-ième diapositive.         -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Codes correcteurs d'erreurs</h2>
+			<main>
+				<ul>
+					<li><a href="#4">Détecter les erreurs</a>
+						<ul>
+							<li>Pourquoi&nbsp;?</li>
+							<li>Bit de parité</li>
+						</ul>
+					</li>
+					<li><a href="#8">Corriger les erreurs</a>
+						<ul>
+							<li>Redondance</li>
+							<li>Distance de Hamming</li>
+							<li>Messages valides et invalides</li>
+						</ul>
+					</li>
+					<li><a href="#13">Le code de Hamming</a>
+						<ul>
+							<li>Codage, décodage d'une erreur</li>
+							<li>Deux erreurs</li>
+						</ul>
+					</li>
+					<li><a href="#17">Mise en œuvre</a>
+						<ul>
+							<li>Cas général</li>
+							<li>Implémentation par XOR</li>
+						</ul>
+					</li>
+				</ul>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  4. Détecter                                                  -->
+	<!-- ============================================================ -->
+		<section>
+			<h1>Détecter les erreurs</h1>
+		</section>
+
+		<section>
+			<h2>Pourquoi&nbsp;?</h2>
+			<main>
+				<p>Détecter les erreurs de transmission, et si possible les corriger.</p>
+				<div class="ulcontainer readable-width">
+				<ul>
+					<li>Vidéo, audio</li>
+					<li>Perte de paquets sur Internet</li>
+					<li>Codes-barres et QR codes</li>
+					<li>CD, DVD et stockage en général</li>
+					<li>Mémoires ECC, sondes spatiales&hellip;</li>
+				</ul>
+				</div>
+			</main>
+		</section>
+
+		<section>
+			<h2>Bit de parité</h2>
+			<main id="parite">
+				<p>Alice veut transmettre à Bob le message</p>
+				<table class="cm4-msg big">
+					<tr>
+						<td id="bitparite" class="hidden invert">0</td>
+						<td>1</td><td>0</td><td>1</td><td>1</td><td>0</td><td>0</td><td>1</td>
+					</tr>
+				</table>
+				<div class="hidden" data-fragments="{hidden}">
+					<p>Elle ajoute au début un bit de parité :</p>
+					<div class="ulcontainer readable-width">
+					<ul>
+						<li>$0$ si le nombre de $1$ est pair ;</li>
+						<li>$1$ si le nombre de $1$ est impair.</li>
+					</ul>
+					</div>
+				</div>
+				<div data-fragments="[bitparite]{hidden}"></div>
+			</main>
+			<div class="boxed center middle hidden align-center" data-fragments="{hidden} +0[parite]{blur}">
+				Si la parité reçue est fausse, Bob sait qu'il y a eu une erreur :<br/>
+				il redemande le message.<br/>
+				<br/>
+				Utilisé sur les liaisons série, dans certaines mémoires&hellip;
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  7. Sondage                                                   -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>À vous&nbsp;!</h2>
+			<!-- poll.js remplit data-poll-url avec l'adresse de vote ; elle est affichée en sous-titre. -->
+			<h3 class="cm4-url" data-poll-url=""></h3>
+			<main>
+				<div class="cm4-sondage">
+					<div class="cm4-sondage-qr">
+						<img class="poll-qr" alt="QR code du sondage"/>
+					</div>
+					<div class="poll" data-poll="parite-deux-erreurs"
+					     data-question="Bit de parité : deux bits sont inversés pendant la transmission. Que peut faire Bob ?"
+					     data-fragments="{open} {open} +0{results} {answer}">
+						<p>Bit de parité : <b>deux</b> bits sont inversés<br/>
+						   pendant la transmission.<br/>
+						   Que peut faire Bob&nbsp;?</p>
+						<ol>
+							<li>Détecter et corriger l'erreur</li>
+							<li>Détecter l'erreur, sans la corriger</li>
+							<li class="correct">Rien : il ne voit pas d'erreur</li>
+							<li>Cela dépend des bits inversés</li>
+						</ol>
+					</div>
+				</div>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  8. Corriger                                                  -->
+	<!-- ============================================================ -->
+		<section>
+			<h1>Corriger les erreurs</h1>
+		</section>
+
+		<section>
+			<h2>Redondance</h2>
+			<main id="redondance-main">
+				<p>Pour que Bob puisse corriger une erreur, Alice envoie le message trois fois.</p>
+				<table class="cm4-msg">
+					<tr><td class="cm4-lab">copie 1</td>
+						<td>1</td><td>0</td><td>1</td><td>1</td><td>0</td><td>0</td><td>1</td></tr>
+					<tr><td class="cm4-lab">copie 2</td>
+						<td>1</td><td>0</td><td id="r2c3"><span id="r2v">1</span><span id="r2w" class="removed">0</span></td><td>1</td><td>0</td><td>0</td><td>1</td></tr>
+					<tr><td class="cm4-lab">copie 3</td>
+						<td>1</td><td>0</td><td id="r3c3"><span id="r3v">1</span><span id="r3w" class="removed">0</span></td><td>1</td><td>0</td><td>0</td><td>1</td></tr>
+					<tr id="vote" class="hidden invert"><td class="cm4-lab">vote</td>
+						<td>1</td><td>0</td><td id="vc3"><span id="vv">1</span><span id="vw" class="removed">0</span></td><td>1</td><td>0</td><td>0</td><td>1</td></tr>
+				</table>
+				<div data-fragments="
+					[r2c3]{invert auxicolor} +0[r2v,r2w]{removed}
+					[vote]{hidden}
+					[r3c3]{invert auxicolor} +0[r3v,r3w]{removed}
+					[vc3]{auxicolor blink} +0[vv,vw]{removed}
+				"></div>
+			</main>
+			<div class="boxed center middle hidden align-center" data-fragments="{hidden} +0[redondance-main]{blur}">
+				Un message 3 fois plus long<br/>
+				pour corriger une <b>unique</b> erreur&nbsp;!
+			</div>
+		</section>
+
+		<section>
+			<h2>Distance de Hamming</h2>
+			<main>
+				<p>Pour deux messages $m_1$ et $m_2$ de même longueur :</p>
+				$$
+				d(m_1,m_2)=\Card\{i~:~m_1(i)\neq m_2(i)\}
+				$$
+				<h3>Exemple</h3>
+				$$
+				d(01\cssId{diff1}{0}11,\ 01\cssId{diff2}{1}11)\cssId{res}{\class{hidden}{=1}}
+				$$
+				<div data-fragments="[diff1,diff2]{invert} +0[res]{hidden}"></div>
+			</main>
+		</section>
+
+		<section>
+			<h2>Messages valides / invalides</h2>
+			<main id="valides-main">
+				<div id="valides-texte">
+				<p>Codage : $\varphi$ injective,</p>
+				$$
+				\begin{array}{rcl}
+				\varphi:E&\rightarrow& F\\
+				m &\mapsto& \varphi(m)
+				\end{array}
+				$$
+				<p>Messages valides : $\Img(\varphi) \subset F$.</p>
+				<div class="hidden" data-fragments="{hidden}">
+					<p>Distance du code :</p>
+					$$d_\varphi=\min_{\substack{m_1,m_2 \in \Img(\varphi)\\ m_1\neq m_2}} d(m_1,m_2)$$
+				</div>
+				</div>
+				<!-- Le dessin remplace le texte (sinon le texte apparait en dessous). -->
+				<img src="SVG/codage.svg" style="width:100%;height:100%;" class="center middle hidden" data-fragments="{hidden} +0[valides-texte]{hidden}" alt="Réseau des messages possibles, messages valides en bleu"/>
+			</main>
+			<div class="boxed center middle hidden align-center" data-fragments="{hidden} +0[valides-main]{blur}">
+				<h3 class="align-center">Détection</h3>
+				Nombre d'erreurs $\lt d_\varphi$
+				<h3 class="align-center">Correction</h3>
+				Nombre d'erreurs $\lt d_\varphi/2$
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  Sondage : distance-repetition                                -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>À vous&nbsp;!</h2>
+			<h3 class="cm4-url" data-poll-url=""></h3>
+			<main>
+				<div class="cm4-sondage cm4-sondage-seul">
+					<div class="poll" data-poll="distance-repetition"
+					     data-question="Code par répétition ×3 : chaque bit est envoyé 3 fois (000 ou 111). Quelle est la distance de ce code ?"
+					     data-fragments="{open} {open} +0{results} {answer}">
+						<p>Code par répétition ×3 :<br/>
+						   chaque bit est envoyé 3 fois<br/>
+						   ($000$ ou $111$).<br/>
+						   Quelle est la distance $d_\varphi$ du code&nbsp;?</p>
+						<ol>
+							<li>1</li>
+							<li>2</li>
+							<li class="correct">3</li>
+							<li>6</li>
+						</ol>
+					</div>
+				</div>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  12. Code de Hamming                                          -->
+	<!-- ============================================================ -->
+		<section>
+			<h1>Le code de Hamming</h1>
+		</section>
+
+		<section>
+			<h2>Richard Hamming (1915&ndash;1988)</h2>
+			<main>
+				<div class="align-center">
+					<img src="img/hamming.jpg" class="cm4-portrait" alt="Richard Hamming"/>
+					<p>Bell Labs, fin des années 1940 (publié en 1950).</p>
+				</div>
+			</main>
+		</section>
+
+		<!-- Codage (4 bits de contrôle), une erreur au bit 12, décodage -->
+		<section>
+			<h2>Code de Hamming [15,11,3]</h2>
+			<main>
+				<div class="cm4-label">
+					<span id="errorid" class="removed">Une erreur au bit 12</span>
+					<span id="bobid" class="removed">Bob reçoit le message : y a-t-il une erreur&nbsp;? Où&nbsp;?</span>
+					<span id="foundid" class="removed">Erreur au bit 12 : Bob la corrige</span>
+				</div>
+				<div class="cm4-grid">
+				<div id="n0000" class="cm4-idx">0</div>
+				<div id="n0001" class="cm4-idx cm4-pow">1</div>
+				<div id="n0010" class="cm4-idx cm4-pow">2</div>
+				<div id="n0011" class="cm4-idx">3</div>
+				<div id="n0100" class="cm4-idx cm4-pow">4</div>
+				<div id="n0101" class="cm4-idx">5</div>
+				<div id="n0110" class="cm4-idx">6</div>
+				<div id="n0111" class="cm4-idx">7</div>
+				<div id="n1000" class="cm4-idx cm4-pow">8</div>
+				<div id="n1001" class="cm4-idx">9</div>
+				<div id="n1010" class="cm4-idx">10</div>
+				<div id="n1011" class="cm4-idx">11</div>
+				<div id="n1100" class="cm4-idx">12</div>
+				<div id="n1101" class="cm4-idx">13</div>
+				<div id="n1110" class="cm4-idx">14</div>
+				<div id="n1111" class="cm4-idx">15</div>
+				<div id="c0000" class="cm4-bit cm4-unused"></div>
+				<div id="c0001" class="cm4-bit hiddenContent">0</div>
+				<div id="c0010" class="cm4-bit hiddenContent">1</div>
+				<div id="c0011" class="cm4-bit">1</div>
+				<div id="c0100" class="cm4-bit hiddenContent">0</div>
+				<div id="c0101" class="cm4-bit">0</div>
+				<div id="c0110" class="cm4-bit">1</div>
+				<div id="c0111" class="cm4-bit">1</div>
+				<div id="c1000" class="cm4-bit hiddenContent">0</div>
+				<div id="c1001" class="cm4-bit">1</div>
+				<div id="c1010" class="cm4-bit">0</div>
+				<div id="c1011" class="cm4-bit">1</div>
+				<div id="c1100" class="cm4-bit"><span id="c1100v">1</span><span id="c1100w" class="removed">0</span></div>
+				<div id="c1101" class="cm4-bit">0</div>
+				<div id="c1110" class="cm4-bit">1</div>
+				<div id="c1111" class="cm4-bit">0</div>
+				<div id="e0000" class="cm4-syn hidden"></div>
+				<div id="e0001" class="cm4-syn hidden"></div>
+				<div id="e0010" class="cm4-syn hidden"></div>
+				<div id="e0011" class="cm4-syn hidden"></div>
+				<div id="e0100" class="cm4-syn hidden"></div>
+				<div id="e0101" class="cm4-syn hidden"></div>
+				<div id="e0110" class="cm4-syn hidden"></div>
+				<div id="e0111" class="cm4-syn hidden"></div>
+				<div id="e1000" class="cm4-syn hidden"></div>
+				<div id="e1001" class="cm4-syn hidden"></div>
+				<div id="e1010" class="cm4-syn hidden"></div>
+				<div id="e1011" class="cm4-syn hidden"></div>
+				<div id="e1100" class="cm4-syn hidden"></div>
+				<div id="e1101" class="cm4-syn hidden"></div>
+				<div id="e1110" class="cm4-syn hidden"></div>
+				<div id="e1111" class="cm4-syn hidden"></div>
+				<div id="f0000" class="cm4-syn hidden"></div>
+				<div id="f0001" class="cm4-syn hidden"></div>
+				<div id="f0010" class="cm4-syn hidden"></div>
+				<div id="f0011" class="cm4-syn hidden"></div>
+				<div id="f0100" class="cm4-syn hidden"></div>
+				<div id="f0101" class="cm4-syn hidden"></div>
+				<div id="f0110" class="cm4-syn hidden"></div>
+				<div id="f0111" class="cm4-syn hidden"></div>
+				<div id="f1000" class="cm4-syn hidden"></div>
+				<div id="f1001" class="cm4-syn hidden"></div>
+				<div id="f1010" class="cm4-syn hidden"></div>
+				<div id="f1011" class="cm4-syn hidden"></div>
+				<div id="f1100" class="cm4-syn hidden"></div>
+				<div id="f1101" class="cm4-syn hidden"></div>
+				<div id="f1110" class="cm4-syn hidden"></div>
+				<div id="f1111" class="cm4-syn hidden"></div>
+				<div id="g0000" class="cm4-syn hidden"></div>
+				<div id="g0001" class="cm4-syn hidden"></div>
+				<div id="g0010" class="cm4-syn hidden"></div>
+				<div id="g0011" class="cm4-syn hidden"></div>
+				<div id="g0100" class="cm4-syn hidden"></div>
+				<div id="g0101" class="cm4-syn hidden"></div>
+				<div id="g0110" class="cm4-syn hidden"></div>
+				<div id="g0111" class="cm4-syn hidden"></div>
+				<div id="g1000" class="cm4-syn hidden"></div>
+				<div id="g1001" class="cm4-syn hidden"></div>
+				<div id="g1010" class="cm4-syn hidden"></div>
+				<div id="g1011" class="cm4-syn hidden"></div>
+				<div id="g1100" class="cm4-syn hidden"></div>
+				<div id="g1101" class="cm4-syn hidden"></div>
+				<div id="g1110" class="cm4-syn hidden"></div>
+				<div id="g1111" class="cm4-syn hidden"></div>
+				<div id="h0000" class="cm4-syn hidden"></div>
+				<div id="h0001" class="cm4-syn hidden"></div>
+				<div id="h0010" class="cm4-syn hidden"></div>
+				<div id="h0011" class="cm4-syn hidden"></div>
+				<div id="h0100" class="cm4-syn hidden"></div>
+				<div id="h0101" class="cm4-syn hidden"></div>
+				<div id="h0110" class="cm4-syn hidden"></div>
+				<div id="h0111" class="cm4-syn hidden"></div>
+				<div id="h1000" class="cm4-syn hidden"></div>
+				<div id="h1001" class="cm4-syn hidden"></div>
+				<div id="h1010" class="cm4-syn hidden"></div>
+				<div id="h1011" class="cm4-syn hidden"></div>
+				<div id="h1100" class="cm4-syn hidden"></div>
+				<div id="h1101" class="cm4-syn hidden"></div>
+				<div id="h1110" class="cm4-syn hidden"></div>
+				<div id="h1111" class="cm4-syn hidden"></div>
+				</div>
+				<div data-fragments="
+				[c1000,c1001,c1010,c1011,c1100,c1101,c1110,c1111]{invert}
+				[c1000]{hiddenContent}
+				[c1000,c1001,c1010,c1011,c1100,c1101,c1110,c1111]{invert} +0[c0100,c0101,c0110,c0111,c1100,c1101,c1110,c1111]{invert}
+				[c0100]{hiddenContent}
+				[c0100,c0101,c0110,c0111,c1100,c1101,c1110,c1111]{invert} +0[c0010,c0011,c0110,c0111,c1010,c1011,c1110,c1111]{invert}
+				[c0010]{hiddenContent}
+				[c0010,c0011,c0110,c0111,c1010,c1011,c1110,c1111]{invert} +0[c0001,c0011,c0101,c0111,c1001,c1011,c1101,c1111]{invert}
+				[c0001]{hiddenContent}
+				[c0001,c0011,c0101,c0111,c1001,c1011,c1101,c1111]{invert}
+				[c1100]{auxicolor invert} +0[c1100v,c1100w]{removed} +0[errorid]{removed}
+				[c1100]{auxicolor invert} +0[errorid]{removed} +0[bobid]{removed}
+				[n1000,n1001,n1010,n1011,n1100,n1101,n1110,n1111]{invert} +0[e0000,e0001,e0010,e0011,e0100,e0101,e0110,e0111,e1000,e1001,e1010,e1011,e1100,e1101,e1110,e1111]{hidden}
+				[e1000,e1001,e1010,e1011,e1100,e1101,e1110,e1111]{invert} +0[n1000,n1001,n1010,n1011,n1100,n1101,n1110,n1111]{invert}
+				[n0100,n0101,n0110,n0111,n1100,n1101,n1110,n1111]{invert} +0[f0000,f0001,f0010,f0011,f0100,f0101,f0110,f0111,f1000,f1001,f1010,f1011,f1100,f1101,f1110,f1111]{hidden}
+				[f0100,f0101,f0110,f0111,f1100,f1101,f1110,f1111]{invert} +0[n0100,n0101,n0110,n0111,n1100,n1101,n1110,n1111]{invert}
+				[n0010,n0011,n0110,n0111,n1010,n1011,n1110,n1111]{invert} +0[g0000,g0001,g0010,g0011,g0100,g0101,g0110,g0111,g1000,g1001,g1010,g1011,g1100,g1101,g1110,g1111]{hidden}
+				[g0000,g0001,g0100,g0101,g1000,g1001,g1100,g1101]{invert} +0[n0010,n0011,n0110,n0111,n1010,n1011,n1110,n1111]{invert}
+				[n0001,n0011,n0101,n0111,n1001,n1011,n1101,n1111]{invert} +0[h0000,h0001,h0010,h0011,h0100,h0101,h0110,h0111,h1000,h1001,h1010,h1011,h1100,h1101,h1110,h1111]{hidden}
+				[h0000,h0010,h0100,h0110,h1000,h1010,h1100,h1110]{invert} +0[n0001,n0011,n0101,n0111,n1001,n1011,n1101,n1111]{invert}
+				[c1100]{auxicolor invert} +0[n1100]{auxicolor invert} +0[bobid]{removed} +0[foundid]{removed}
+				[c1100v,c1100w]{removed}
+				"></div>
+			</main>
+		</section>
+
+		<!-- Deux erreurs, rôle du bit 0 -->
+		<section>
+			<h2>Deux erreurs</h2>
+			<h3>et à quoi sert le bit 0&nbsp;?</h3>
+			<main id="deux-erreurs-main">
+				<p class="cm4-label hidden" id="errorid2">Erreurs aux bits 7 et 12<span id="erreurDetection" class="hidden"> ; le décodage désigne le bit 11&nbsp;!</span></p>
+				<div class="cm4-grid">
+				<div id="En0000" class="cm4-idx">0</div>
+				<div id="En0001" class="cm4-idx cm4-pow">1</div>
+				<div id="En0010" class="cm4-idx cm4-pow">2</div>
+				<div id="En0011" class="cm4-idx">3</div>
+				<div id="En0100" class="cm4-idx cm4-pow">4</div>
+				<div id="En0101" class="cm4-idx">5</div>
+				<div id="En0110" class="cm4-idx">6</div>
+				<div id="En0111" class="cm4-idx">7</div>
+				<div id="En1000" class="cm4-idx cm4-pow">8</div>
+				<div id="En1001" class="cm4-idx">9</div>
+				<div id="En1010" class="cm4-idx">10</div>
+				<div id="En1011" class="cm4-idx">11</div>
+				<div id="En1100" class="cm4-idx">12</div>
+				<div id="En1101" class="cm4-idx">13</div>
+				<div id="En1110" class="cm4-idx">14</div>
+				<div id="En1111" class="cm4-idx">15</div>
+				<div id="Ec0000" class="cm4-bit hiddenContent">0</div>
+				<div id="Ec0001" class="cm4-bit">0</div>
+				<div id="Ec0010" class="cm4-bit">1</div>
+				<div id="Ec0011" class="cm4-bit">1</div>
+				<div id="Ec0100" class="cm4-bit">0</div>
+				<div id="Ec0101" class="cm4-bit">0</div>
+				<div id="Ec0110" class="cm4-bit">1</div>
+				<div id="Ec0111" class="cm4-bit"><span id="Ec0111v">1</span><span id="Ec0111w" class="removed">0</span></div>
+				<div id="Ec1000" class="cm4-bit">0</div>
+				<div id="Ec1001" class="cm4-bit">1</div>
+				<div id="Ec1010" class="cm4-bit">0</div>
+				<div id="Ec1011" class="cm4-bit">1</div>
+				<div id="Ec1100" class="cm4-bit"><span id="Ec1100v">1</span><span id="Ec1100w" class="removed">0</span></div>
+				<div id="Ec1101" class="cm4-bit">0</div>
+				<div id="Ec1110" class="cm4-bit">1</div>
+				<div id="Ec1111" class="cm4-bit">0</div>
+				<div id="Ee0000" class="cm4-syn hidden"></div>
+				<div id="Ee0001" class="cm4-syn hidden"></div>
+				<div id="Ee0010" class="cm4-syn hidden"></div>
+				<div id="Ee0011" class="cm4-syn hidden"></div>
+				<div id="Ee0100" class="cm4-syn hidden"></div>
+				<div id="Ee0101" class="cm4-syn hidden"></div>
+				<div id="Ee0110" class="cm4-syn hidden"></div>
+				<div id="Ee0111" class="cm4-syn hidden"></div>
+				<div id="Ee1000" class="cm4-syn hidden"></div>
+				<div id="Ee1001" class="cm4-syn hidden"></div>
+				<div id="Ee1010" class="cm4-syn hidden"></div>
+				<div id="Ee1011" class="cm4-syn hidden"></div>
+				<div id="Ee1100" class="cm4-syn hidden"></div>
+				<div id="Ee1101" class="cm4-syn hidden"></div>
+				<div id="Ee1110" class="cm4-syn hidden"></div>
+				<div id="Ee1111" class="cm4-syn hidden"></div>
+				<div id="Ef0000" class="cm4-syn hidden"></div>
+				<div id="Ef0001" class="cm4-syn hidden"></div>
+				<div id="Ef0010" class="cm4-syn hidden"></div>
+				<div id="Ef0011" class="cm4-syn hidden"></div>
+				<div id="Ef0100" class="cm4-syn hidden"></div>
+				<div id="Ef0101" class="cm4-syn hidden"></div>
+				<div id="Ef0110" class="cm4-syn hidden"></div>
+				<div id="Ef0111" class="cm4-syn hidden"></div>
+				<div id="Ef1000" class="cm4-syn hidden"></div>
+				<div id="Ef1001" class="cm4-syn hidden"></div>
+				<div id="Ef1010" class="cm4-syn hidden"></div>
+				<div id="Ef1011" class="cm4-syn hidden"></div>
+				<div id="Ef1100" class="cm4-syn hidden"></div>
+				<div id="Ef1101" class="cm4-syn hidden"></div>
+				<div id="Ef1110" class="cm4-syn hidden"></div>
+				<div id="Ef1111" class="cm4-syn hidden"></div>
+				<div id="Eg0000" class="cm4-syn hidden"></div>
+				<div id="Eg0001" class="cm4-syn hidden"></div>
+				<div id="Eg0010" class="cm4-syn hidden"></div>
+				<div id="Eg0011" class="cm4-syn hidden"></div>
+				<div id="Eg0100" class="cm4-syn hidden"></div>
+				<div id="Eg0101" class="cm4-syn hidden"></div>
+				<div id="Eg0110" class="cm4-syn hidden"></div>
+				<div id="Eg0111" class="cm4-syn hidden"></div>
+				<div id="Eg1000" class="cm4-syn hidden"></div>
+				<div id="Eg1001" class="cm4-syn hidden"></div>
+				<div id="Eg1010" class="cm4-syn hidden"></div>
+				<div id="Eg1011" class="cm4-syn hidden"></div>
+				<div id="Eg1100" class="cm4-syn hidden"></div>
+				<div id="Eg1101" class="cm4-syn hidden"></div>
+				<div id="Eg1110" class="cm4-syn hidden"></div>
+				<div id="Eg1111" class="cm4-syn hidden"></div>
+				<div id="Eh0000" class="cm4-syn hidden"></div>
+				<div id="Eh0001" class="cm4-syn hidden"></div>
+				<div id="Eh0010" class="cm4-syn hidden"></div>
+				<div id="Eh0011" class="cm4-syn hidden"></div>
+				<div id="Eh0100" class="cm4-syn hidden"></div>
+				<div id="Eh0101" class="cm4-syn hidden"></div>
+				<div id="Eh0110" class="cm4-syn hidden"></div>
+				<div id="Eh0111" class="cm4-syn hidden"></div>
+				<div id="Eh1000" class="cm4-syn hidden"></div>
+				<div id="Eh1001" class="cm4-syn hidden"></div>
+				<div id="Eh1010" class="cm4-syn hidden"></div>
+				<div id="Eh1011" class="cm4-syn hidden"></div>
+				<div id="Eh1100" class="cm4-syn hidden"></div>
+				<div id="Eh1101" class="cm4-syn hidden"></div>
+				<div id="Eh1110" class="cm4-syn hidden"></div>
+				<div id="Eh1111" class="cm4-syn hidden"></div>
+				</div>
+				<div data-fragments="
+				[Ec0111]{auxicolor invert} +0[Ec0111v,Ec0111w]{removed}
+				[Ec1100]{auxicolor invert} +0[Ec1100v,Ec1100w]{removed} +0[errorid2]{hidden}
+				[Ec0111,Ec1100]{auxicolor invert}
+				[En1000,En1001,En1010,En1011,En1100,En1101,En1110,En1111]{invert} +0[Ee0000,Ee0001,Ee0010,Ee0011,Ee0100,Ee0101,Ee0110,Ee0111,Ee1000,Ee1001,Ee1010,Ee1011,Ee1100,Ee1101,Ee1110,Ee1111]{hidden}
+				[Ee1000,Ee1001,Ee1010,Ee1011,Ee1100,Ee1101,Ee1110,Ee1111]{invert} +0[En1000,En1001,En1010,En1011,En1100,En1101,En1110,En1111]{invert}
+				[En0100,En0101,En0110,En0111,En1100,En1101,En1110,En1111]{invert} +0[Ef0000,Ef0001,Ef0010,Ef0011,Ef0100,Ef0101,Ef0110,Ef0111,Ef1000,Ef1001,Ef1010,Ef1011,Ef1100,Ef1101,Ef1110,Ef1111]{hidden}
+				[Ef0000,Ef0001,Ef0010,Ef0011,Ef1000,Ef1001,Ef1010,Ef1011]{invert} +0[En0100,En0101,En0110,En0111,En1100,En1101,En1110,En1111]{invert}
+				[En0010,En0011,En0110,En0111,En1010,En1011,En1110,En1111]{invert} +0[Eg0000,Eg0001,Eg0010,Eg0011,Eg0100,Eg0101,Eg0110,Eg0111,Eg1000,Eg1001,Eg1010,Eg1011,Eg1100,Eg1101,Eg1110,Eg1111]{hidden}
+				[Eg0010,Eg0011,Eg0110,Eg0111,Eg1010,Eg1011,Eg1110,Eg1111]{invert} +0[En0010,En0011,En0110,En0111,En1010,En1011,En1110,En1111]{invert}
+				[En0001,En0011,En0101,En0111,En1001,En1011,En1101,En1111]{invert} +0[Eh0000,Eh0001,Eh0010,Eh0011,Eh0100,Eh0101,Eh0110,Eh0111,Eh1000,Eh1001,Eh1010,Eh1011,Eh1100,Eh1101,Eh1110,Eh1111]{hidden}
+				[Eh0001,Eh0011,Eh0101,Eh0111,Eh1001,Eh1011,Eh1101,Eh1111]{invert} +0[En0001,En0011,En0101,En0111,En1001,En1011,En1101,En1111]{invert}
+				[Ec1011,En1011]{auxicolor invert} +0[erreurDetection]{hidden}
+				[Ec0000]{hiddenContent invert}
+				"></div>
+			</main>
+			<div class="boxed center middle hidden align-center" data-fragments="{hidden} +0[deux-erreurs-main]{blur}">
+				Bit 0 = parité de tout le message.<br/>
+				<br/>
+				Erreur détectée <em>et</em> parité globale correcte :<br/>
+				au moins deux erreurs. On ne corrige pas.
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  16. Mise en oeuvre                                           -->
+	<!-- ============================================================ -->
+		<section>
+			<h1>Mise en œuvre</h1>
+		</section>
+
+		<section>
+			<h2>Hamming : cas général</h2>
+			<main>
+				<p>Avec $n$ bits de contrôle :</p>
+				<div class="ulcontainer readable-width">
+				<ul>
+					<li>message codé : $2^n-1$ bits ;</li>
+					<li>message transmis : $2^n-1-n$ bits ;</li>
+					<li>distance du code : $3$.</li>
+				</ul>
+				</div>
+				$$[\,2^n-1,\ 2^n-1-n,\ 3\,]$$
+				<div class="hidden" data-fragments="{hidden}">
+					<h3>Exemple : $n=4$</h3>
+					$$[\,15,\ 11,\ 3\,]$$
+				</div>
+			</main>
+		</section>
+
+		<section>
+			<h2>Implémentation</h2>
+			<h3>Codage / décodage / correction</h3>
+			<main id="implementation-main">
+				<div class="cm4-grid">
+					<div class="cm4-idx">0</div><div class="cm4-idx cm4-pow">1</div><div class="cm4-idx cm4-pow">2</div><div class="cm4-idx">3</div>
+					<div class="cm4-idx cm4-pow">4</div><div class="cm4-idx">5</div><div class="cm4-idx">6</div><div class="cm4-idx">7</div>
+					<div class="cm4-idx cm4-pow">8</div><div class="cm4-idx">9</div><div class="cm4-idx">10</div><div class="cm4-idx">11</div>
+					<div class="cm4-idx">12</div><div class="cm4-idx">13</div><div class="cm4-idx">14</div><div class="cm4-idx">15</div>
+					<div class="cm4-bit cm4-unused"></div>
+					<div id="bit1H" class="cm4-bit hiddenContent">0</div>
+					<div id="bit2H" class="cm4-bit hiddenContent">1</div>
+					<div class="cm4-bit">1</div>
+					<div id="bit3H" class="cm4-bit hiddenContent">0</div>
+					<div class="cm4-bit">0</div>
+					<div class="cm4-bit">1</div>
+					<div class="cm4-bit">1</div>
+					<div id="bit4H" class="cm4-bit hiddenContent">0</div>
+					<div id="errorbit" class="cm4-bit"><span id="errorbit1">1</span><span id="errorbit2" class="removed">0</span></div>
+					<div class="cm4-bit">0</div>
+					<div class="cm4-bit">1</div>
+					<div class="cm4-bit">1</div>
+					<div class="cm4-bit">0</div>
+					<div class="cm4-bit">1</div>
+					<div class="cm4-bit">0</div>
+				</div>
+				<div class="cm4-three hidden" data-fragments="{hidden}">
+					<div class="small">
+						<h3 class="align-center">Codage</h3>
+						$$
+						\begin{array}{rcl}
+							3&=&0011_2 \\
+							6&=&0110_2 \\
+							7&=&0111_2 \\
+							9&=&1001_2\\
+							11&=&1011_2\\
+							12&=&1100_2\\
+							14&=&1110_2\\
+							\hline
+							\operatorname{XOR}&=&\cssId{bitshamming}{\class{hidden}{0010_2}}\\
+							&=&\cssId{sommecontrole}{\class{hidden}{\class{invert}{~0~}\times 1+\class{invert}{~1~}\times 2+\class{invert}{~0~}\times 4+\class{invert}{~0~}\times 8}}
+						\end{array}
+						$$
+					</div>
+					<div id="decodage" class="small hidden">
+						<h3 class="align-center">Décodage</h3>
+						$$
+						\begin{array}{rcl}
+							2&=&0010_2\\
+							3&=&0011_2 \\
+							6&=&0110_2 \\
+							7&=&0111_2 \\
+							9&=&1001_2\\
+							11&=&1011_2\\
+							12&=&1100_2\\
+							14&=&1110_2\\
+							\hline
+							\operatorname{XOR}&=&\cssId{resdecodage}{\class{hidden}{0000_2}}
+						\end{array}
+						$$
+					</div>
+					<div id="mistake" class="small hidden">
+						<h3 class="align-center">Correction</h3>
+						$$
+						\begin{array}{rcl}
+							2&=&0010_2\\
+							3&=&0011_2 \\
+							6&=&0110_2 \\
+							7&=&0111_2 \\
+							11&=&1011_2\\
+							12&=&1100_2\\
+							14&=&1110_2\\
+							\hline
+							\operatorname{XOR}&=&\cssId{rescorrection}{\class{hidden}{1001_2=\class{auxicolor invert}{\,9\,}}}
+						\end{array}
+						$$
+					</div>
+				</div>
+				<div data-fragments="
+					[bitshamming]{hidden}
+					[sommecontrole]{hidden}
+					[bit1H,bit2H,bit3H,bit4H]{hiddenContent invert}
+					[decodage]{hidden}
+					[resdecodage]{hidden}
+					[errorbit]{auxicolor invert} +0[errorbit1,errorbit2]{removed}
+					[mistake]{hidden}
+					[rescorrection]{hidden}
+					[errorbit1,errorbit2]{removed}
+				"></div>
+			</main>
+			<div class="boxed center middle hidden align-center" data-fragments="{hidden} +0[implementation-main]{blur}">
+				Une erreur corrigée avec <b>4</b> bits de contrôle pour 11 bits de message,<br/>
+				contre <b>22</b> avec la répétition (&times;3).
+			</div>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  Sondage : syndrome                                           -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>À vous&nbsp;!</h2>
+			<h3 class="cm4-url" data-poll-url=""></h3>
+			<main>
+				<div class="cm4-sondage cm4-sondage-seul">
+					<div class="poll" data-poll="syndrome"
+					     data-question="Bob reçoit un mot dont les 1 sont aux positions 3 = 0011, 5 = 0101, 6 = 0110 et 9 = 1001. Quel bit est erroné ?"
+					     data-fragments="{open} {open} +0{results} {answer}">
+						<p>Bob reçoit un mot dont les 1<br/>
+						   sont aux positions<br/>
+						   $3 = 0011_2$, $5 = 0101_2$,<br/>
+						   $6 = 0110_2$, $9 = 1001_2$.<br/>
+						   Quel bit est erroné&nbsp;?</p>
+						<ol>
+							<li>Le bit 3</li>
+							<li>Le bit 5</li>
+							<li class="correct">Le bit 9</li>
+							<li>Aucun</li>
+						</ol>
+					</div>
+				</div>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  19. À retenir                                                -->
+	<!-- ============================================================ -->
+		<section>
+			<h3>À retenir</h3>
+			<main>
+				<p>Un code de distance $d$ détecte jusqu'à $d-1$ erreurs et en corrige jusqu'à $\lfloor (d-1)/2 \rfloor$.</p>
+				<p>Le code de Hamming [15,11,3] corrige une erreur avec 4 bits de contrôle : le XOR des positions des 1 donne la position de l'erreur.</p>
+				<p>Un bit de parité global en plus permet de détecter deux erreurs.</p>
+				<p class="cm4-note">Pour revoir : <a href="https://www.youtube.com/watch?v=X8jsijhllIA&amp;t=607s">le code de Hamming par 3Blue1Brown</a> (YouTube).</p>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  Sondage : age-hamming                                        -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>À vous&nbsp;!</h2>
+			<h3 class="cm4-url" data-poll-url=""></h3>
+			<main>
+				<div class="cm4-sondage cm4-sondage-seul">
+					<div class="poll" data-poll="age-hamming"
+					     data-question="Pour finir : quel âge avait Richard Hamming quand il a publié son code ?"
+					     data-fragments="{open} {open} +0{results} {answer}">
+						<p>Pour finir&nbsp;:<br/>
+						   quel âge avait Richard Hamming<br/>
+						   quand il a publié son code&nbsp;?</p>
+						<ol>
+							<li>25 ans</li>
+							<li class="correct">35 ans</li>
+							<li>45 ans</li>
+							<li>73 ans</li>
+						</ol>
+					</div>
+				</div>
+			</main>
+		</section>
+
+	<!-- ============================================================ -->
+	<!--  Fin : clôture du sondage, message et score sur les téléphones -->
+	<!-- ============================================================ -->
+		<section>
+			<h2>Merci&nbsp;!</h2>
+			<main>
+				<p>Le code de Hamming corrige une erreur<br/>
+				   avec seulement quelques bits de contrôle.</p>
+				<p>Prochaine séance&nbsp;: TP code de Hamming.</p>
+				<p class="poll-end hidden"
+				   data-message="Merci ! À retenir : le XOR des positions des 1 donne la position de l'erreur. Prochaine séance : TP code de Hamming."
+				   data-fragments="{hidden open}"><b>Regardez votre téléphone&nbsp;: votre score vous attend.</b></p>
+			</main>
+		</section>
+
+	</div>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/pantzO/transitionjs@2.1.0/transition.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/gh/pantzO/transitionjs@2.1.0/poll.js"></script>
+<script>
+	function demarre(){
+		// Sans clé présentateur (?key=...), le deck se contente d'afficher les résultats.
+		if (TransitionJS.polls) {
+			TransitionJS.polls({
+				server: 'https://poll-transitionjs-poll.apps.math.cnrs.fr',
+				session: 'r309-cm4'
+			});
+		}
+		TransitionJS.init({
+			rules: [ { selector: '#slides > :not(:first-child)', fragments: '[slides]{--shift++} 2s' } ],
+		});
+	}
+	if (window.MathJax && MathJax.Hub) MathJax.Hub.Queue(demarre); else demarre();
+</script>
+</body>
+
+</html>

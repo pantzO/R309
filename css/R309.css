@@ -1,0 +1,358 @@
+/* colors and fonts */
+@import url('https://fonts.googleapis.com/css?family=Roboto&display=swap');
+@import url('https://fonts.googleapis.com/css?family=Mansalva&display=swap');
+body {
+	--auxiliarycolor:#ed7d31;
+	--secondarycolor:white;
+	--maincolor:#0085A3;
+;
+	--graphcolor:var(--fontcolor);
+	font-family:'Roboto', sans-serif;
+}
+/*
+	background-color: rgb(0, 62, 117);
+	background-image: url("https://www.transparenttextures.com/patterns/beige-paper.png"); 
+ */
+body {
+	--backgroundcolor:var(--secondarycolor);
+	--fontcolor:var(--maincolor);
+}
+body {
+ 	 background-color:var(--backgroundcolor);
+}
+body {color:var(--fontcolor);} 
+.OK {
+	color:lightgreen;
+}
+.KO{
+	color:#ee9090;
+}
+.newlook{
+	--backgroundcolor:mediumseagreen;
+	--fontcolor:white;
+	font-family:'Mansalva', cursive;
+	background-color:var(--backgroundcolor);
+	color:var(--fontcolor);
+}
+.newdisplay h2{
+	writing-mode: vertical-rl;
+	position:absolute;
+	left:0;
+	top:50%;
+	transform:translate(0,-50%) rotate(180deg);
+	background-color:var(--fontcolor);color:var(--backgroundcolor);
+	height:calc(100vh - 2em);
+	margin:0;
+	padding:1em;
+}
+/* graph drawing effect */
+.hold polyline {
+	stroke-dasharray: 1400;
+	stroke-dashoffset: 1400;
+}
+.hold.go polyline {
+	animation: dash 3s linear forwards;
+}
+.stroke {
+	stroke:var(--fontcolor); stroke-width:0.2em; vector-effect:non-scaling-stroke; stroke-linejoin:round; stroke-linecap:round;
+}
+@keyframes dash {
+	to {stroke-dashoffset: 0;}
+}
+/* several font sizes */
+:root {
+	--titleSize:7vmin;
+	--titleMargin:5vh;
+	--ExtraHuge:20vmin;
+	--Huge:15vmin;
+	--big:10vmin;
+	--large:7vmin;
+	--normal:4vmin;
+	--small:3vmin;
+	--tiny:1.5vmin;
+}
+body #slides>section {font-size:var(--normal);}
+body #slides>section .ExtraHuge  {font-size:var(--ExtraHuge);}
+body #slides>section .Huge  {font-size:var(--Huge);}
+body #slides>section .big {font-size:var(--big);}
+body #slides>section .normal  {font-size:var(--normal);}
+body #slides>section .small  {font-size:var(--small);}
+body #slides>section .tiny  {font-size:var(--tiny);}
+body #slides>section .large  {font-size:var(--large);}
+
+/* section display */
+	section {text-align:center;}
+	.left {position:absolute;left:0;}
+	.middle.left {position:absolute;left:0; top:50%; transform:translateY(-50%);}
+	.right {position:absolute;right:0;}
+	.middle.right {position:absolute;right:0; top:50%; transform:translateY(-50%);}
+	.middle.right.null {position:absolute;right:0; top:50%; transform:translateY(-50%) scale(0);}
+	span.null {transform: scale(0);display:inline-block !important;}
+	span.inline {display:inline-block !important;}
+	.middle	
+		{top: 50%; transform: translateY(-50%); position:absolute; margin-top:0;}
+	.center	
+		{left:50%; transform: translateX(-50%); position:absolute; margin-left:0;}
+	.middle.center, section>h1	
+		{top: 50%; left:50%;transform: translate(-50%,-50%); position:absolute;}
+	.middle.center.null	
+		{top: 50%; left:50%;transform: translate(-50%,-50%) scale(0); position:absolute;}
+	.boxed {
+		background-color:var(--backgroundcolor);
+		padding:0.7em;
+		border:0.05em var(--fontcolor) solid;
+		border-radius:0.7em;
+		box-shadow:1em 1em 1em rgba(0,0,0,.5)
+	}
+	.fit {
+		width:min-content;
+	}
+	.full {
+		width:100%;
+	}
+/* list */
+	.ulcontainer {
+		display:flex;
+		flex-direction:column;	
+		align-items:center;
+		
+	}
+	.ulcontainer>div {
+		text-align:left;
+	}
+/* effects */
+	@keyframes blink {
+ 		0% {opacity:0;}
+ 		50% {opacity: 1;}
+ 		100% {opacity: 0;}
+	}
+	.blink {
+		animation-name: blink;
+		animation-duration: 2s;
+		animation-iteration-count: infinite;
+	}
+	.bold {
+		font-weight:bold;
+	}
+	.highlight{
+		--fontcolor:#ffff88;
+		color:var(--fontcolor);
+	}
+	.italic {
+		font-style:italic;
+	}
+	.underline {
+		text-decoration:underline;
+	}
+	.bottom{
+		transform:translateY(100vh);
+	}
+	.blur {
+		filter:blur(3px);
+	}
+	.hidden {
+		opacity:0;
+	}
+	/* Hack to replace display:none; which generates some incorrect font-size settings */
+	.removed {
+		position: absolute !important; 
+		visibility: hidden !important;
+	}
+
+/* footnote */
+	#footnote {
+		position:fixed; bottom:0;
+		margin:1em;
+		z-index:10;
+	}
+/* page numbering */
+	#slides {
+		counter-reset:page;
+	}
+	#slides section::after {
+		counter-increment:page;
+		position:absolute; bottom:0;right:0;
+		font-size:5vmin;
+		margin:5vmin;
+		content:counter(page);
+	}
+	body.navigate #slides section::after {
+		font-size:12vmin;
+		z-index:100;
+		background-color:var(--backgroundcolor);
+		padding:3vmin;
+		border: 0.5vmin var(--fontcolor) solid;
+	}
+hgroup {
+	position:absolute;
+	white-space: nowrap;
+	top:50%;
+	left:50%;
+	transform: translate(-50%,-50%);
+	margin:0;
+	font-weight:inherit;
+}
+.invert { 
+	--backgroundcolor:var(--maincolor);
+	--fontcolor:var(--secondarycolor);
+	background-color:var(--backgroundcolor);
+	color:var(--fontcolor);
+}
+hgroup {
+	padding:var(--titleMargin);
+}
+hgroup>h2 {
+	position:relative;
+	margin-bottom:normal;
+	margin-top:normal;
+	font-size:var(--normal);
+}
+h1 {
+	font-size:var(--big);
+	font-weight:normal;
+	margin-bottom:var(--titleMargin);
+	margin-top:var(--titleMargin);
+}
+
+h2,.title {
+	position:absolute;
+	text-align:center;
+	width:100%;
+	font-size:var(--titleSize);
+	font-weight:normal;
+	margin-bottom:var(--titleMargin);
+	margin-top:var(--titleMargin);
+}
+h3 {
+	font-weight:normal;
+	color:var(--auxiliarycolor);
+}
+/*@media screen and (max-width:calc(100vh / 2)){
+
+	--titleSize:7vmin;
+	--titleMargin:5vh;
+C'est un peu customisé en fonction des valeurs choisies;
+On pourrait faire mieux, mais il semble qu'on ne puisse utiliser vw dans la conftion max-width...
+width < C - 1.315 width
+
+width < C / (2.315)
+ 
+ max aspect ratio = 0.9/2.315 = 90/23.15 = 9000/2315
+
+ 100vw < 100vh - 1.315 * 7vw - 2 * 5 vh;
+ <=>
+(100-1.315*7) vw < 90 vh
+<=>
+vw/vh < 90 / (100 - 1.315*7) = 90000/(100000 - 1315*7) = 90000/90795
+
+remarques :
+1. Il ne semble pas apprécier les nombre non entier dans la condition media
+2. Il semble qu'on ne puisse pas utiliser vw pour une conditon de type max-width
+3. On peut utiiser calcl cependant. Du coup, on devrait pouvoir tout déiinir en fonction de variables globales
+ */
+
+
+@media all and (max-aspect-ratio:90000/90795){
+	.main {
+		--main-min:100vw !important;
+	}
+}
+.main {
+	--main-height:calc(100vh - 1.315 * var(--titleSize) - 2 * var(--titleMargin));
+	--main-min:var(--main-height);
+	margin-top:calc(1.315 * var(--titleSize) + 2 * var(--titleMargin));
+	position:absolute;
+	width:100%;
+	height:var(--main-height);}
+.scrollable {
+	--itemSize:15vmin;
+	--listShift:0;
+	--visible:3;
+	height:calc(var(--visible) * var(--itemSize));
+	overflow:hidden;
+	width:min-content;
+}
+.main.flex {
+	display:flex;
+	
+}
+.scrollable>div {
+	height:var(--itemSize);
+	top:calc(-1 * var(--listShift) * var(--itemSize));
+	position:relative;
+	transition:inherit;
+	white-space:nowrap;
+}
+.overflow {
+	overflow: visible;
+}
+#Archi>div,#trivial>div {
+	text-align:left;
+}
+
+#presentation {
+	display: flex;
+	flex-wrap: wrap;
+	width:100%;
+}
+#presentation>div {
+	margin:1em;
+	transform:rotate(-5deg);
+	font-size:1.7vmax;
+}
+
+.nowrap {
+	white-space: nowrap;
+}
+
+.stamp {
+	position:absolute;
+	top:50%;
+	left:50%;
+	transform: translate(-50%,-50%) rotate(-30deg) ;
+}
+/* Logo */
+	body.UCA {
+		background-image:url("UCAlogoQhaut.png");
+		background-size:10vw;
+		background-position:87.5vw 1.5vw;
+		background-repeat:no-repeat;
+	}
+	#logo {
+		position:fixed; width:10vw; top:0;right:0; margin:1.5vw;
+		width:5vw;
+		text-align:center;
+		z-index:10;
+	}
+
+/* proof */
+	.proof>part {
+		min-height:100%;
+		position:relative;
+		top: calc(var(--part) * (-100%));
+		display:block;
+		transition:inherit;
+	}
+	.proof {
+		height:100%;
+		--part:0;
+		position:relative;
+		overflow:hidden;
+	}
+input[type="number"]{
+	font-size:1em;
+	width:5em;
+}
+.histo {
+	width:70%;
+	display:inline-block;
+}
+.histo>div { display:inline-block; text-align:center; font-size:0.8em; color:var(--secondarycolor);}
+.histo div:first-child{
+	background-color:var(--auxiliarycolor);
+	width:calc(var(--fabron) / (var(--fabron) + var(--sophia)) * 100%);
+}
+.histo div:nth-child(2){
+	background-color:var(--maincolor);
+	width:calc(var(--sophia) / (var(--fabron) + var(--sophia)) * 100%);
+}

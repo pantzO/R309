@@ -1,0 +1,13 @@
+.KO {
+	color:red;
+}
+.emFirst:first-letter, .auxicolor  {
+	--fontcolor:var(--auxiliarycolor);
+}
+.auxicolor.invert {
+	--fontcolor:var(--secondarycolor);
+	--backgroundcolor:var(--auxiliarycolor);
+}
+.wrap {
+	overflow-wrap:break-word;
+}
