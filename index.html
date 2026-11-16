@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>R309 – Cryptographie et sécurité</title>
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap">
+	<style>
+		:root {
+			--main: #0085A3;
+			--aux: #ed7d31;
+			--bg: #ffffff;
+			--card: #f3f9fb;
+			--text: #1d2b30;
+		}
+		* { box-sizing: border-box; }
+		body {
+			margin: 0;
+			font-family: 'Roboto', sans-serif;
+			background: var(--bg);
+			color: var(--text);
+		}
+		header {
+			background: var(--main);
+			color: white;
+			padding: 2.5em 1em 2em;
+			text-align: center;
+		}
+		header img { height: 60px; margin-bottom: 1em; }
+		header h1 { margin: 0; font-size: 2em; }
+		header p { margin: 0.4em 0 0; font-size: 1.1em; opacity: 0.9; }
+		main { max-width: 720px; margin: 2em auto; padding: 0 16px; }
+		ol { list-style: none; padding: 0; margin: 0; counter-reset: chap; }
+		li { counter-increment: chap; margin-bottom: 0.8em; }
+		a {
+			display: flex;
+			align-items: center;
+			gap: 1em;
+			padding: 1em 1.2em;
+			background: var(--card);
+			border-left: 6px solid var(--main);
+			border-radius: 6px;
+			color: var(--text);
+			text-decoration: none;
+			font-size: 1.15em;
+			transition: border-color 0.2s, transform 0.2s;
+		}
+		a::before {
+			content: counter(chap);
+			flex: none;
+			width: 2em; height: 2em;
+			display: grid; place-items: center;
+			border-radius: 50%;
+			background: var(--main);
+			color: white;
+			font-weight: bold;
+		}
+		a:hover, a:focus { border-color: var(--aux); transform: translateX(4px); }
+		a:hover::before, a:focus::before { background: var(--aux); }
+		footer { text-align: center; font-size: 0.85em; opacity: 0.7; margin: 3em 0 2em; }
+	</style>
+</head>
+<body>
+	<header>
+		<img src="css/UCAlogoQhautBLANC.png" alt="Université Côte d'Azur">
+		<h1>Cryptographie et sécurité</h1>
+		<p>R309 – Transparents du cours</p>
+	</header>
+	<main>
+		<ol>
+			<li><a href="R309-0.html">Chiffrement symétrique – César</a></li>
+			<li><a href="R309-1.html">Permutations</a></li>
+			<li><a href="R309-2.html">Chiffrement asymétrique</a></li>
+			<li><a href="R309-3.html">Détecter les erreurs</a></li>
+			<li><a href="R309-4.html">Fonctions de hachage</a></li>
+		</ol>
+	</main>
+	<footer>Olivier Pantz</footer>
+</body>
+</html>
